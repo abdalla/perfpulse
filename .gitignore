@@ -1,0 +1,9 @@
+/build/
+/out/
+/dist/
+.vs/
+.vscode/
+*.user
+CMakeUserPresets.json
+# PawnIO modules are signed third-party blobs, fetched by tools/fetch_pawnio_modules.ps1
+/modules/*.bin

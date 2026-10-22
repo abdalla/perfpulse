@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="PerfPulse">
+<title>PerfPulse Report</title>
+<style>
+:root {
+  --bg: #f4f4f7; --surface: #ffffff; --surface-2: #eeeef3; --border: #e2e2ea;
+  --text: #17171c; --muted: #6b6b78; --faint: #9a9aa8;
+  --accent: #6d5ef7; --accent-2: #22d3ee; --good: #16a34a; --warn: #d97706; --bad: #dc2626;
+  --grid: rgba(0,0,0,.07); --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(20,20,40,.06);
+  --b-gpu: #16a34a; --b-gpu_throttling: #ea580c; --b-cpu: #f59e0b; --b-cpu_thermal: #dc2626;
+  --b-vram: #9333ea; --b-ram: #db2777; --b-frame_cap: #2563eb; --b-mixed: #64748b;
+  --b-loading: #cbd5e1; --b-background: #e5e7eb;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111116; --surface: #1b1b22; --surface-2: #23232c; --border: #2d2d38;
+    --text: #ececf2; --muted: #9a9aab; --faint: #6c6c7c;
+    --grid: rgba(255,255,255,.07); --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    --b-loading: #3b4252; --b-background: #2a2a33;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 20px 64px; }
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+h2 { font-size: 13px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+h3 { font-size: 14px; font-weight: 600; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
+section { margin-top: 18px; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; position: relative; overflow: hidden; }
+.hero::before {
+  content: ""; position: absolute; inset: -40% -10% auto auto; width: 520px; height: 520px; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent);
+  pointer-events: none;
+}
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; color: var(--muted); letter-spacing: .04em; }
+.brand svg { width: 22px; height: 22px; }
+.game { font-size: clamp(26px, 4vw, 40px); font-weight: 750; margin: 10px 0 6px; letter-spacing: -.02em; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 12.5px; white-space: nowrap; }
+.chip b { font-weight: 600; }
+.grade { position: relative; width: 150px; height: 150px; flex: none; }
+.grade svg { width: 150px; height: 150px; transform: rotate(-90deg); }
+.grade .letter { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.grade .letter strong { display: block; font-size: 52px; font-weight: 800; line-height: 1; }
+.grade .letter span { font-size: 12px; color: var(--muted); }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { padding: 16px; }
+.kpi .label { font-size: 12px; color: var(--muted); }
+.kpi .value { font-size: 28px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kpi .value small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+.kpi .sub { font-size: 12px; color: var(--faint); margin-top: 2px; }
+
+/* Verdict */
+.verdict { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; }
+.verdict .headline { display: flex; gap: 14px; align-items: flex-start; }
+.verdict .icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; flex: none; color: #fff; font-weight: 800; font-size: 15px; }
+.verdict .title { font-size: 22px; font-weight: 700; }
+.verdict p { margin: 10px 0 0; color: var(--text); }
+.tips { margin: 12px 0 0; padding-left: 18px; }
+.tips li { margin: 4px 0; }
+.sharebar { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--surface-2); margin: 6px 0 12px; }
+.sharebar div { height: 100%; }
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 14px; font-size: 12.5px; }
+.legend .row { display: flex; align-items: center; gap: 8px; }
+.dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.legend .pct { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted); }
+.alerts { display: grid; gap: 8px; margin-top: 14px; }
+.alert { border-radius: 10px; padding: 8px 12px; font-size: 13px; border: 1px solid var(--border); background: var(--surface-2); }
+.alert.warn { border-color: color-mix(in srgb, var(--warn) 50%, var(--border)); }
+.alert.bad { border-color: color-mix(in srgb, var(--bad) 55%, var(--border)); }
+
+/* Charts */
+.chart { position: relative; width: 100%; }
+.chart canvas { display: block; width: 100%; }
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 10px; font-size: 12px; box-shadow: var(--shadow); white-space: nowrap; z-index: 2;
+  opacity: 0; transition: opacity .08s;
+}
+.tooltip .t { color: var(--muted); margin-bottom: 4px; }
+.tooltip .r { display: flex; align-items: center; gap: 6px; }
+.tooltip .r b { margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; }
+.chart-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-bottom: 8px; }
+.chart-head .keys { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); }
+.chart-head .keys span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-head .keys i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.mini { padding: 16px; }
+.mini .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.mini .big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mini .stats { display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); margin: 2px 0 6px; font-variant-numeric: tabular-nums; flex-wrap: wrap; }
+.group-title { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; }
+.group-title h2 { margin: 0; }
+.group-title .line { flex: 1; height: 1px; background: var(--border); }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: 0; }
+.sev { height: 6px; border-radius: 3px; background: var(--bad); }
+.scroll { max-height: 420px; overflow: auto; }
+
+/* Energy */
+.energy { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: center; }
+.donut { width: 220px; height: 220px; position: relative; }
+.donut .center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.donut .center strong { font-size: 28px; display: block; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.fact { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
+.fact .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fact .l { font-size: 12px; color: var(--muted); }
+.fun { margin-top: 14px; font-size: 13px; color: var(--muted); }
+
+dl.details { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0; font-size: 13px; }
+dl.details dt { color: var(--muted); }
+dl.details dd { margin: 0; word-break: break-word; }
+footer { margin-top: 28px; color: var(--faint); font-size: 12px; text-align: center; }
+.na { color: var(--faint); font-style: italic; }
+
+@media (max-width: 900px) {
+  .verdict, .grid2, .energy { grid-template-columns: 1fr; }
+  .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .wrap { padding: 16px 12px 48px; }
+  .grid3 { grid-template-columns: 1fr; }
+}
+@media print {
+  body { background: #fff; }
+  .card { box-shadow: none; break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script id="perfpulse-data" type="application/json">__PERFPULSE_DATA__</script>
+<script>
+(function () {
+"use strict";
+const D = JSON.parse(document.getElementById("perfpulse-data").textContent);
+const LANG = D.lang === "en" ? "en" : "pt-BR";
+document.documentElement.lang = LANG;
+
+// ---------------------------------------------------------------- i18n
+const I18N = {
+  "pt-BR": {
+    title: "Relatório de desempenho", session: "Sessão de jogo", played: "de jogo", active: "ativo", alttab: "em segundo plano",
+    avgFps: "FPS médio", medianFps: "FPS mediano", low1: "1% low", low01: "0.1% low", ftMedian: "Frametime mediano",
+    stutters: "Stutters", energy: "Energia (GPU+CPU)", fpsPerWatt: "FPS por watt", perMin: "/min", frames: "frames",
+    smoothness: "suavidade", grade: "Nota",
+    verdict: "Diagnóstico de gargalo", mainBottleneck: "Gargalo principal", ofTime: "do tempo ativo",
+    noBottleneck: "Sem gargalo de hardware", timeline: "Linha do tempo do gargalo",
+    performance: "Desempenho ao longo da partida", fpsSeries: "FPS", capLine: "Limite detectado", stutterMark: "Stutter",
+    frametime: "Frametime", envelope: "Faixa mín–máx", avgFt: "Média", histogram: "Distribuição do frametime",
+    percentiles: "Percentis do frametime", percentile: "Percentil",
+    sensors: "Sensores", gpu: "GPU", vram: "VRAM", cpu: "CPU", ram: "RAM",
+    avg: "méd", median: "med", min: "mín", max: "máx", p95: "p95",
+    energyTitle: "Energia consumida", gpuEnergy: "GPU", cpuEnergy: "CPU", avgPower: "Potência média", peakPower: "Pico",
+    mjPerFrame: "Energia por frame", total: "total", measuredOnly: "Somente o que é medido de verdade: placa de vídeo e pacote da CPU. Placa-mãe, RAM, SSD, fans e perdas da fonte não entram na conta.",
+    notMeasured: "não medido", stutterList: "Stutters detectados", time: "Momento", frameMs: "Frame", localMedian: "Mediana local",
+    atThatMoment: "No momento", noStutters: "Nenhum stutter detectado. Frametime estável do começo ao fim.",
+    details: "Detalhes da sessão", exe: "Executável", window: "Janela", monitor: "Monitor", api: "API de apresentação",
+    vsync: "V-Sync (SyncInterval)", vsyncOff: "desligado (0)", vsyncOn: "ligado", sources: "Fontes dos sensores",
+    interval: "Intervalo dos sensores", etwLost: "Eventos ETW perdidos", generated: "Gerado por", hardware: "Hardware",
+    driver: "driver", cores: "núcleos", threads: "threads",
+    method: "Como medimos: FPS e frametime vêm do instante de cada chamada Present (ETW, mesmo método do PresentMon). 1% low = 1000 / percentil 99 do frametime; 0.1% low = percentil 99,9. Períodos com o jogo em segundo plano, telas de carregamento (< 8 FPS) e pausas acima de 1 s ficam fora das estatísticas. A nota combina consistência (o 1% mais lento comparado aos frames vizinhos, 45%), stutters por minuto (35%) e regularidade entre frames (20%). Stutter = frame acima de 2,5× a mediana do seu segundo (e no mínimo 12 ms).",
+    limiter: "Limitador da GPU", limPower: "Energia (power limit)", limThermal: "Temperatura", limHw: "Desaceleração HW", limIdle: "Ociosa", limNone: "Sem limite (boost máx./tensão)",
+    gamePerf: "Jogo", busiestThread: "Thread mais ocupada", gameCpu: "CPU do jogo", workingSet: "Memória do jogo",
+    estimate: "estimativa", na: "N/D", fanRpm: "Ventoinha (RPM)", alerts: "Alertas",
+    funPhone: "≈ {0} cargas de celular", funShower: "≈ {0} min de chuveiro elétrico (5.500 W)", funLed: "≈ {0} h de uma lâmpada LED de 9 W",
+    clockTime: "Hora", elapsed: "Tempo",
+  },
+  "en": {
+    title: "Performance report", session: "Game session", played: "played", active: "active", alttab: "in background",
+    avgFps: "Average FPS", medianFps: "Median FPS", low1: "1% low", low01: "0.1% low", ftMedian: "Median frametime",
+    stutters: "Stutters", energy: "Energy (GPU+CPU)", fpsPerWatt: "FPS per watt", perMin: "/min", frames: "frames",
+    smoothness: "smoothness", grade: "Grade",
+    verdict: "Bottleneck analysis", mainBottleneck: "Main bottleneck", ofTime: "of active time",
+    noBottleneck: "No hardware bottleneck", timeline: "Bottleneck timeline",
+    performance: "Performance over the session", fpsSeries: "FPS", capLine: "Detected cap", stutterMark: "Stutter",
+    frametime: "Frametime", envelope: "Min–max band", avgFt: "Average", histogram: "Frametime distribution",
+    percentiles: "Frametime percentiles", percentile: "Percentile",
+    sensors: "Sensors", gpu: "GPU", vram: "VRAM", cpu: "CPU", ram: "RAM",
+    avg: "avg", median: "med", min: "min", max: "max", p95: "p95",
+    energyTitle: "Energy used", gpuEnergy: "GPU", cpuEnergy: "CPU", avgPower: "Average power", peakPower: "Peak",
+    mjPerFrame: "Energy per frame", total: "total", measuredOnly: "Only what is actually measured: graphics card and CPU package. Motherboard, RAM, storage, fans and PSU losses are not included.",
+    notMeasured: "not measured", stutterList: "Detected stutters", time: "Time", frameMs: "Frame", localMedian: "Local median",
+    atThatMoment: "At that moment", noStutters: "No stutters detected. Frametime stayed steady from start to finish.",
+    details: "Session details", exe: "Executable", window: "Window", monitor: "Monitor", api: "Present API",
+    vsync: "V-Sync (SyncInterval)", vsyncOff: "off (0)", vsyncOn: "on", sources: "Sensor sources",
+    interval: "Sensor interval", etwLost: "ETW events lost", generated: "Generated by", hardware: "Hardware",
+    driver: "driver", cores: "cores", threads: "threads",
+    method: "How we measure: FPS and frametime come from the timestamp of every Present call (ETW, the PresentMon method). 1% low = 1000 / 99th percentile frametime; 0.1% low = 99.9th percentile. Time with the game in the background, loading screens (< 8 FPS) and pauses over 1 s are excluded. The grade combines consistency (slowest 1% compared with neighbouring frames, 45%), stutters per minute (35%) and frame-to-frame pacing (20%). Stutter = a frame over 2.5× the median of its second (and at least 12 ms).",
+    limiter: "GPU limiter", limPower: "Power limit", limThermal: "Thermal", limHw: "HW slowdown", limIdle: "Idle", limNone: "No limit (max boost/voltage)",
+    gamePerf: "Game", busiestThread: "Busiest thread", gameCpu: "Game CPU", workingSet: "Game memory",
+    estimate: "estimate", na: "N/A", fanRpm: "Fan (RPM)", alerts: "Alerts",
+    funPhone: "≈ {0} phone charges", funShower: "≈ {0} min of a 5,500 W electric shower", funLed: "≈ {0} h of a 9 W LED bulb",
+    clockTime: "Time", elapsed: "Elapsed",
+  },
+};
+const T = (k, ...a) => (I18N[LANG][k] || k).replace(/\{(\d)\}/g, (_, i) => a[+i] ?? "");
+
+const B_KEYS = ["gpu", "gpu_throttling", "cpu", "cpu_thermal", "vram", "ram", "frame_cap", "mixed", "loading", "background"];
+const B_TEXT = {
+  "pt-BR": {
+    gpu: ["GPU", "GPU no limite"], gpu_throttling: ["GPU (throttling)", "GPU segurada por temperatura"],
+    cpu: ["CPU", "CPU segurando a GPU"], cpu_thermal: ["CPU (térmico)", "CPU no limite térmico"],
+    vram: ["VRAM", "VRAM cheia"], ram: ["RAM", "RAM esgotada"], frame_cap: ["Limite de FPS", "Limitado por cap / V-Sync"],
+    mixed: ["Indefinido", "Nenhum componente saturado"], loading: ["Carregamento", "Carregamento"], background: ["Segundo plano", "Jogo em segundo plano"],
+  },
+  "en": {
+    gpu: ["GPU", "GPU at its limit"], gpu_throttling: ["GPU (throttling)", "GPU held back by temperature"],
+    cpu: ["CPU", "CPU holding the GPU back"], cpu_thermal: ["CPU (thermal)", "CPU at its thermal limit"],
+    vram: ["VRAM", "VRAM full"], ram: ["RAM", "RAM exhausted"], frame_cap: ["FPS cap", "Held by a cap / V-Sync"],
+    mixed: ["Undetermined", "No component saturated"], loading: ["Loading", "Loading"], background: ["Background", "Game in background"],
+  },
+};
+const bName = (k) => B_TEXT[LANG][k][0];
+const bTitle = (k) => B_TEXT[LANG][k][1];
+
+// ---------------------------------------------------------------- helpers
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+// "#rrggbb" + alpha -> "rgba(...)"; canvas does not reliably accept color-mix().
+const alpha = (hex, a) => {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  return m ? `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${a})` : hex;
+};
+const bColor = (k) => css("--b-" + k);
+const has = (k) => !!(D.metrics && D.metrics[k]);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nf = (v, d = 0) => v == null || !isFinite(v) ? T("na") : Number(v).toLocaleString(LANG, { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = (v, d = 0) => v == null ? T("na") : nf(v * 100, d) + "%";
+const fmtDur = (s) => {
+  s = Math.round(s || 0); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
+  return h ? `${h}h ${String(m).padStart(2, "0")}min` : `${m}min ${String(sec).padStart(2, "0")}s`;
+};
+const energyPerFrame = (mj) => mj >= 1000 ? nf(mj / 1000, 2) + " J" : nf(mj) + " mJ";
+const startMs = D.info.start_ms;
+const useClock = has("wall_clock");
+const fmtT = (t) => {
+  if (useClock) {
+    return new Date(startMs + t * 1000).toLocaleTimeString(LANG, { hour: "2-digit", minute: "2-digit", second: t < 3600 * 6 ? "2-digit" : undefined });
+  }
+  t = Math.max(0, Math.round(t)); const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0");
+};
+const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); e.innerHTML = html; return e; };
+const app = document.getElementById("app");
+const S = D.series || {};
+const F = D.frames || {};
+const info = D.info || {};
+const hw = info.hardware || {};
+
+// ---------------------------------------------------------------- chart engine
+// Minimal canvas line chart: multiple series, optional band, shaded spans,
+// markers, horizontal reference lines, a categorical strip and a hover tooltip.
+function Chart(host, opt) {
+  const box = el("div", { class: "chart" });
+  const canvas = el("canvas");
+  const tip = el("div", { class: "tooltip" });
+  box.append(canvas, tip);
+  host.append(box);
+  const H = opt.height || 220;
+  const pad = { l: 44, r: 12, t: 10, b: opt.strip ? 44 : 26 };
+  let hover = -1, W = 0, scaleX, scaleY, yMin, yMax;
+  const xs = opt.x;
+  const n = xs.length;
+  const x0 = n ? xs[0] : 0, x1 = n ? xs[n - 1] : 1;
+  // Lines break across gaps (e.g. alt-tab periods missing from the frametime envelope).
+  const gapLimit = n > 1 ? (x1 - x0) / (n - 1) * 5 : Infinity;
+  const isGap = (i) => i > 0 && xs[i] - xs[i - 1] > gapLimit;
+
+  function range() {
+    let lo = Infinity, hi = -Infinity;
+    const scan = (arr) => { for (const v of arr) if (v != null && isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } };
+    opt.series.forEach((s) => scan(s.values));
+    if (opt.band) { scan(opt.band.lo); scan(opt.band.hi); }
+    (opt.hLines || []).forEach((h) => scan([h.y]));
+    if (!isFinite(lo)) { lo = 0; hi = 1; }
+    if (opt.yMin != null) lo = opt.yMin; else lo = Math.min(lo, 0);
+    if (opt.yMax != null) hi = Math.max(opt.yMax, opt.clampMax ? 0 : hi); else hi = hi + (hi - lo) * 0.08;
+    if (opt.yCap) hi = Math.min(hi, opt.yCap);
+    if (hi <= lo) hi = lo + 1;
+    return [lo, niceCeil(hi)];
+  }
+  function niceCeil(v) {
+    const p = Math.pow(10, Math.floor(Math.log10(Math.abs(v) || 1)));
+    for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
+    return v;
+  }
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    W = box.clientWidth;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    canvas.style.height = H + "px";
+    const g = canvas.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    [yMin, yMax] = range();
+    const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+    scaleX = (x) => pad.l + (x1 === x0 ? 0 : (x - x0) / (x1 - x0)) * pw;
+    scaleY = (y) => pad.t + ph - (y - yMin) / (yMax - yMin) * ph;
+
+    // shaded spans (background time)
+    (opt.spans || []).forEach((s) => {
+      g.fillStyle = s.color; const a = scaleX(s.from), b = scaleX(s.to);
+      g.fillRect(a, pad.t, Math.max(1, b - a), ph);
+    });
+    // grid + y labels
+    g.font = "11px Segoe UI, system-ui, sans-serif"; g.fillStyle = css("--faint"); g.strokeStyle = css("--grid"); g.lineWidth = 1;
+    const ticks = 4;
+    for (let i = 0; i <= ticks; i++) {
+      const v = yMin + (yMax - yMin) * i / ticks, y = Math.round(scaleY(v)) + .5;
+      g.beginPath(); g.moveTo(pad.l, y); g.lineTo(W - pad.r, y); g.stroke();
+      g.textAlign = "right"; g.textBaseline = "middle";
+      g.fillText(nf(v, (yMax - yMin) < 5 ? 1 : 0) + (opt.unit || ""), pad.l - 6, y);
+    }
+    // x labels
+    g.textAlign = "center"; g.textBaseline = "top";
+    const xticks = Math.max(2, Math.min(8, Math.floor(pw / 110)));
+    for (let i = 0; i <= xticks; i++) {
+      const t = x0 + (x1 - x0) * i / xticks;
+      g.fillText(fmtT(t), Math.min(Math.max(scaleX(t), pad.l + 18), W - pad.r - 18), H - pad.b + 6);
+    }
+    // band
+    if (opt.band) {
+      // One polygon per contiguous segment so gaps stay empty.
+      g.fillStyle = opt.band.color;
+      let from = 0;
+      for (let i = 1; i <= n; i++) {
+        if (i < n && !isGap(i)) continue;
+        g.beginPath();
+        for (let j = from; j < i; j++) { const X = scaleX(xs[j]), Y = scaleY(Math.min(opt.band.hi[j], yMax)); j === from ? g.moveTo(X, Y) : g.lineTo(X, Y); }
+        for (let j = i - 1; j >= from; j--) g.lineTo(scaleX(xs[j]), scaleY(opt.band.lo[j]));
+        g.closePath(); g.fill();
+        from = i;
+      }
+    }
+    // series
+    opt.series.forEach((s) => {
+      g.strokeStyle = s.color; g.lineWidth = s.width || 1.6; g.setLineDash(s.dash || []); g.lineJoin = "round";
+      if (s.fill) {
+        g.fillStyle = s.fill; g.beginPath(); let first = -1;
+        for (let i = 0; i < n; i++) { const v = s.values[i]; if (v == null) continue; const X = scaleX(xs[i]); if (first < 0) { first = i; g.moveTo(X, scaleY(yMin)); } g.lineTo(X, scaleY(v)); }
+        if (first >= 0) { g.lineTo(scaleX(xs[n - 1]), scaleY(yMin)); g.closePath(); g.fill(); }
+      }
+      g.beginPath(); let pen = false;
+      for (let i = 0; i < n; i++) {
+        const v = s.values[i];
+        if (v == null) { pen = false; continue; }
+        if (isGap(i)) pen = false;
+        const X = scaleX(xs[i]), Y = scaleY(Math.min(v, yMax));
+        pen ? g.lineTo(X, Y) : g.moveTo(X, Y); pen = true;
+      }
+      g.stroke(); g.setLineDash([]);
+    });
+    // reference lines
+    (opt.hLines || []).forEach((h) => {
+      const y = Math.round(scaleY(h.y)) + .5;
+      g.strokeStyle = h.color; g.setLineDash([5, 4]); g.lineWidth = 1.2;
+      g.beginPath(); g.moveTo(pad.l, y); g.lineTo(W - pad.r, y); g.stroke(); g.setLineDash([]);
+      g.fillStyle = h.color; g.textAlign = "right"; g.textBaseline = "bottom"; g.fillText(h.label, W - pad.r - 4, y - 3);
+    });
+    // markers (stutters)
+    (opt.markers || []).forEach((m) => {
+      const X = scaleX(m.x);
+      g.fillStyle = m.color; g.beginPath();
+      g.moveTo(X, pad.t + 1); g.lineTo(X - 4, pad.t - 5 + 1); g.lineTo(X + 4, pad.t - 5 + 1); g.closePath();
+      g.globalAlpha = .9; g.fill(); g.globalAlpha = .25; g.fillRect(X - .5, pad.t, 1, ph); g.globalAlpha = 1;
+    });
+    // categorical strip
+    if (opt.strip) {
+      const y = H - pad.b + 22, h = 10;
+      for (let i = 0; i < n; i++) {
+        const a = scaleX(i ? (xs[i - 1] + xs[i]) / 2 : xs[0]), b = scaleX(i < n - 1 ? (xs[i] + xs[i + 1]) / 2 : xs[n - 1]);
+        g.fillStyle = opt.strip.color(i); g.fillRect(a, y, Math.max(1, b - a + .5), h);
+      }
+    }
+    // hover
+    if (hover >= 0 && hover < n) {
+      const X = Math.round(scaleX(xs[hover])) + .5;
+      g.strokeStyle = css("--muted"); g.lineWidth = 1; g.beginPath(); g.moveTo(X, pad.t); g.lineTo(X, H - pad.b); g.stroke();
+      opt.series.forEach((s) => {
+        const v = s.values[hover]; if (v == null) return;
+        g.fillStyle = s.color; g.beginPath(); g.arc(X, scaleY(Math.min(v, yMax)), 3.5, 0, Math.PI * 2); g.fill();
+      });
+    }
+  }
+  function onMove(ev) {
+    if (!n) return;
+    const r = canvas.getBoundingClientRect(), mx = ev.clientX - r.left;
+    const t = x0 + (mx - pad.l) / (W - pad.l - pad.r) * (x1 - x0);
+    let lo = 0, hi = n - 1;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; xs[mid] < t ? lo = mid : hi = mid; }
+    hover = Math.abs(xs[lo] - t) < Math.abs(xs[hi] - t) ? lo : hi;
+    draw();
+    const rows = opt.series.map((s) => `<div class="r"><span class="dot" style="background:${s.color}"></span>${esc(s.label)}<b>${s.values[hover] == null ? T("na") : nf(s.values[hover], s.decimals ?? 0) + (s.unit || opt.unit || "")}</b></div>`);
+    if (opt.extraTip) rows.push(opt.extraTip(hover));
+    tip.innerHTML = `<div class="t">${fmtT(xs[hover])}</div>` + rows.join("");
+    tip.style.opacity = 1;
+    const X = scaleX(xs[hover]);
+    tip.style.left = Math.min(Math.max(8, X + 12), W - tip.offsetWidth - 8) + "px";
+    tip.style.top = "8px";
+  }
+  canvas.addEventListener("mousemove", onMove);
+  canvas.addEventListener("mouseleave", () => { hover = -1; tip.style.opacity = 0; draw(); });
+  new ResizeObserver(() => draw()).observe(box);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  draw();
+}
+
+function barChart(host, { labels, values, color, height = 180, unit = "", highlight }) {
+  const box = el("div", { class: "chart" }); const canvas = el("canvas"); box.append(canvas); host.append(box);
+  function draw() {
+    const dpr = window.devicePixelRatio || 1, W = box.clientWidth, H = height;
+    canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.height = H + "px";
+    const g = canvas.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const pad = { l: 8, r: 8, t: 8, b: 24 }, pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+    const max = Math.max(...values, 1), bw = pw / values.length;
+    values.forEach((v, i) => {
+      const h = v / max * ph;
+      g.fillStyle = highlight && highlight(i) ? css("--bad") : color;
+      g.globalAlpha = .9; g.fillRect(pad.l + i * bw + 1, pad.t + ph - h, Math.max(1, bw - 2), h); g.globalAlpha = 1;
+    });
+    g.fillStyle = css("--faint"); g.font = "11px Segoe UI, system-ui"; g.textAlign = "center"; g.textBaseline = "top";
+    const step = Math.ceil(values.length / Math.max(2, Math.floor(pw / 60)));
+    for (let i = 0; i < values.length; i += step) g.fillText(labels[i] + unit, pad.l + i * bw + bw / 2, H - pad.b + 6);
+  }
+  new ResizeObserver(draw).observe(box); draw();
+}
+
+function donut(host, parts, centerHtml) {
+  const total = parts.reduce((a, p) => a + p.value, 0) || 1;
+  let acc = 0; const r = 80, c = 2 * Math.PI * r;
+  const arcs = parts.map((p) => {
+    const len = p.value / total * c, off = acc; acc += len;
+    return `<circle r="${r}" cx="110" cy="110" fill="none" stroke="${p.color}" stroke-width="26" stroke-dasharray="${len} ${c - len}" stroke-dashoffset="${-off}" />`;
+  }).join("");
+  host.innerHTML = `<div class="donut"><svg viewBox="0 0 220 220" width="220" height="220" style="transform:rotate(-90deg)"><circle r="${r}" cx="110" cy="110" fill="none" stroke="${css("--surface-2")}" stroke-width="26"/>${arcs}</svg><div class="center">${centerHtml}</div></div>`;
+}
+
+// ---------------------------------------------------------------- sections
+const gameTitle = has("game_name") ? (info.game_name || info.exe_name) : T("session");
+document.title = `${gameTitle} · PerfPulse`;
+const start = new Date(info.start_ms), end = new Date(info.end_ms);
+const dateText = start.toLocaleDateString(LANG, { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+const timeText = `${start.toLocaleTimeString(LANG, { hour: "2-digit", minute: "2-digit" })} – ${end.toLocaleTimeString(LANG, { hour: "2-digit", minute: "2-digit" })}`;
+
+const score = D.score || {};
+const gradeColor = { S: "#a855f7", A: "#16a34a", B: "#65a30d", C: "#d97706", D: "#dc2626" }[score.grade] || css("--muted");
+const ringLen = 2 * Math.PI * 64;
+
+function hero() {
+  const chips = [];
+  if (hw.gpu_name) chips.push(`<span class="chip"><b>${esc(hw.gpu_name)}</b>${hw.gpu_driver ? " · " + T("driver") + " " + esc(hw.gpu_driver) : ""}</span>`);
+  if (hw.cpu_name) chips.push(`<span class="chip"><b>${esc(hw.cpu_name)}</b>${hw.cpu_p_cores ? ` · ${hw.cpu_p_cores}P${hw.cpu_e_cores ? "+" + hw.cpu_e_cores + "E" : ""}` : ""}</span>`);
+  if (hw.ram_total_gb) chips.push(`<span class="chip"><b>${nf(hw.ram_total_gb)} GB</b> RAM</span>`);
+  if (info.monitor_width) chips.push(`<span class="chip"><b>${info.monitor_width}×${info.monitor_height}</b> @ ${info.monitor_hz} Hz</span>`);
+  if (info.present_api) chips.push(`<span class="chip">${esc(info.present_api)}${info.sync_interval >= 0 ? " · V-Sync " + (info.sync_interval ? T("vsyncOn") : "off") : ""}</span>`);
+  const card = el("div", { class: "card hero" }, `
+    <div>
+      <div class="brand"><svg viewBox="0 0 32 32"><defs><linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#pg)"/><polyline points="4,17 10,17 13,8 17,25 20,14 22,17 28,17" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>PERFPULSE · ${esc(T("title")).toUpperCase()}</div>
+      <h1 class="game">${esc(gameTitle)}</h1>
+      <div class="meta"><span>${esc(dateText)}</span><span>${esc(timeText)}</span>
+        <span><b>${fmtDur(info.duration_sec)}</b> ${T("played")}</span>
+        ${info.background_sec > 5 ? `<span>${fmtDur(info.foreground_sec)} ${T("active")} · ${fmtDur(info.background_sec)} ${T("alttab")}</span>` : ""}</div>
+      <div class="chips">${chips.join("")}</div>
+    </div>
+    <div class="grade" title="${T("grade")}">
+      <svg viewBox="0 0 150 150"><circle cx="75" cy="75" r="64" fill="none" stroke="${css("--surface-2")}" stroke-width="12"/>
+        <circle cx="75" cy="75" r="64" fill="none" stroke="${gradeColor}" stroke-width="12" stroke-linecap="round"
+          stroke-dasharray="${ringLen * (score.score || 0) / 100} ${ringLen}"/></svg>
+      <div class="letter"><div><strong style="color:${gradeColor}">${esc(score.grade || "-")}</strong><span>${score.score ?? "-"}/100 · ${T("smoothness")}</span></div></div>
+    </div>`);
+  app.append(card);
+}
+
+function kpis() {
+  const minutes = Math.max((F.active_sec || 0) / 60, 1 / 60);
+  const items = [];
+  if (has("fps")) {
+    items.push([T("avgFps"), nf(F.avg_fps, 1), "", `${nf(F.count)} ${T("frames")}`]);
+    items.push([T("medianFps"), nf(F.median_fps, 1), "", ""]);
+  }
+  if (has("one_percent_low")) {
+    items.push([T("low1"), nf(F.low1_fps, 1), "", `avg ${nf(F.low1_avg_fps, 1)}`]);
+    items.push([T("low01"), nf(F.low01_fps, 1), "", ""]);
+  }
+  if (has("frametime")) items.push([T("ftMedian"), nf(F.ft_median, 2), "ms", `p99 ${nf(F.ft_p99, 1)} ms`]);
+  items.push([T("stutters"), nf(D.stutters.length), "", `${nf(D.stutters.length / minutes, 2)}${T("perMin")}`]);
+  items.push([T("energy"), nf(D.energy.total_wh, D.energy.total_wh < 100 ? 1 : 0), "Wh", `${nf(D.energy.avg_w)} W ${T("avg")}`]);
+  if (D.energy.fps_per_watt) items.push([T("fpsPerWatt"), nf(D.energy.fps_per_watt, 2), "", `${energyPerFrame(D.energy.mj_per_frame)}/frame`]);
+  const sec = el("section", { class: "kpis" });
+  sec.innerHTML = items.map(([l, v, u, s]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}<small>${u}</small></div><div class="sub">${s}</div></div>`).join("");
+  app.append(sec);
+}
+
+function tipsFor(b) {
+  const bn = D.bottleneck, pt = LANG !== "en";
+  const ch = D.channels || {};
+  const gpuAvg = ch.gpu_usage && ch.gpu_usage.avg;
+  const list = {
+    gpu: pt ? [
+      "A GPU trabalhou no limite: é o cenário esperado num jogo bem otimizado.",
+      "Para mais FPS: ative DLSS/FSR/XeSS (Qualidade ou Equilibrado), reduza ray tracing, sombras, volumétricos e oclusão de ambiente, ou baixe a resolução.",
+      bn.gpu_power_limited_share > .5 ? `Em ${pct(bn.gpu_power_limited_share)} desse tempo a placa estava no limite de energia (power limit). Um undervolt mantém o clock com menos watts e menos calor.` : null,
+      "Se o frametime oscila, um limitador de FPS ~3% abaixo do mínimo estável (ou Reflex/Anti-Lag) deixa o jogo mais liso.",
+    ] : [
+      "The GPU was fully used: the expected state for a well-optimized game.",
+      "For more FPS: enable DLSS/FSR/XeSS (Quality or Balanced), lower ray tracing, shadows, volumetrics and ambient occlusion, or reduce resolution.",
+      bn.gpu_power_limited_share > .5 ? `For ${pct(bn.gpu_power_limited_share)} of that time the card sat at its power limit. An undervolt keeps clocks with fewer watts and less heat.` : null,
+      "If frametime fluctuates, a frame limiter ~3% below your stable minimum (or Reflex/Anti-Lag) makes the game smoother.",
+    ],
+    gpu_throttling: pt ? [
+      "A GPU reduziu o clock por temperatura ou proteção de hardware enquanto estava 100% ocupada.",
+      "Limpe os filtros de poeira, melhore o fluxo de ar do gabinete e ajuste a curva das ventoinhas.",
+      "Em placas com GDDR6X (série 3080/3090), pads térmicos da VRAM gastos são um culpado clássico.",
+    ] : [
+      "The GPU lowered its clocks because of temperature or hardware protection while fully busy.",
+      "Clean dust filters, improve case airflow and tune the fan curve.",
+      "On GDDR6X cards (3080/3090 class), worn VRAM thermal pads are a classic culprit.",
+    ],
+    cpu: pt ? [
+      `A GPU ficou esperando a CPU (uso médio da GPU ${nf(bn.cpu_bound_gpu)}%)${bn.cpu_bound_thread ? ` enquanto a thread mais ocupada do jogo chegava a ${nf(bn.cpu_bound_thread)}% de um núcleo` : ""}. Isso é típico de jogos que dependem de uma thread principal.`,
+      "Feche apps em segundo plano (navegador, launchers, overlays) e deixe o Modo de Jogo do Windows ativo.",
+      hw.cpu_e_cores ? "Em CPUs híbridas, confira se o jogo roda nos P-cores (Game Bar ativo, chipset/BIOS atualizados)." : null,
+      "Ative XMP/EXPO na BIOS: memória lenta derruba o FPS em cenários limitados pela CPU.",
+      "Reduza opções que pesam na CPU (densidade de multidão, distância de visão, física). Resolução e qualidade de textura quase não custam FPS aqui; Frame Generation (DLSS 3/FSR 3) ajuda muito.",
+    ] : [
+      `The GPU was waiting on the CPU (average GPU usage ${nf(bn.cpu_bound_gpu)}%)${bn.cpu_bound_thread ? ` while the game's busiest thread reached ${nf(bn.cpu_bound_thread)}% of one core` : ""}. Typical of games bound by a main thread.`,
+      "Close background apps (browser, launchers, overlays) and keep Windows Game Mode on.",
+      hw.cpu_e_cores ? "On hybrid CPUs, make sure the game runs on P-cores (Game Bar enabled, chipset/BIOS up to date)." : null,
+      "Enable XMP/EXPO in the BIOS: slow memory hurts FPS in CPU-bound scenes.",
+      "Lower CPU-heavy options (crowd density, view distance, physics). Resolution and texture quality are almost free here; Frame Generation (DLSS 3/FSR 3) helps a lot.",
+    ],
+    cpu_thermal: pt ? [
+      "A CPU estava no limite térmico enquanto segurava a GPU.",
+      "Verifique o cooler (fixação, pasta térmica, rotação da bomba/fans) e os limites de energia (PL1/PL2) na BIOS.",
+      /14900|13900|14700|13700/.test(hw.cpu_name || "") ? "Para Intel 13ª/14ª geração: atualize a BIOS (microcode 0x12B ou mais recente) e use o perfil Intel Default Settings." : null,
+    ] : [
+      "The CPU was at its thermal limit while holding the GPU back.",
+      "Check the cooler (mounting, paste, pump/fan speed) and the power limits (PL1/PL2) in the BIOS.",
+      /14900|13900|14700|13700/.test(hw.cpu_name || "") ? "For Intel 13th/14th gen: update the BIOS (microcode 0x12B or newer) and use the Intel Default Settings profile." : null,
+    ],
+    vram: pt ? [
+      "A VRAM ficou cheia: texturas passam a ir e voltar pela RAM via PCIe, o que causa stutters.",
+      "Reduza a qualidade de texturas um nível e desative pacotes de texturas HD.",
+      "Feche apps que usam a GPU em segundo plano (navegador com aceleração, gravação de tela).",
+    ] : [
+      "VRAM was full: textures spill over PCIe into system RAM, which causes stutter.",
+      "Lower texture quality one notch and disable HD texture packs.",
+      "Close GPU-accelerated background apps (browser, screen recording).",
+    ],
+    ram: pt ? ["A RAM quase acabou e o Windows passou a usar o arquivo de paginação.", "Feche navegadores e launchers; considere mais memória."]
+            : ["System RAM almost ran out and Windows started paging.", "Close browsers and launchers; consider more memory."],
+    frame_cap: pt ? [
+      `O FPS ficou preso em ~${nf(bn.cap_fps)} FPS (limitador, V-Sync ou Reflex) com sobra de GPU${gpuAvg ? ` (uso médio de ${nf(gpuAvg)}%)` : ""}. Ótimo para suavidade e consumo!`,
+      bn.uncapped_estimate_fps ? `Sem limite, a estimativa é de ~${nf(bn.uncapped_estimate_fps)} FPS (${T("estimate")}, por extrapolação do uso da GPU).` : null,
+      info.monitor_hz ? `Com G-Sync/FreeSync num monitor de ${info.monitor_hz} Hz, um limite em ${info.monitor_hz - 3} FPS é o ponto ideal.` : null,
+    ] : [
+      `FPS sat at ~${nf(bn.cap_fps)} FPS (limiter, V-Sync or Reflex) with GPU headroom${gpuAvg ? ` (average usage ${nf(gpuAvg)}%)` : ""}. Great for smoothness and power!`,
+      bn.uncapped_estimate_fps ? `Uncapped, an estimated ~${nf(bn.uncapped_estimate_fps)} FPS (${T("estimate")}, extrapolated from GPU usage).` : null,
+      info.monitor_hz ? `With G-Sync/FreeSync on a ${info.monitor_hz} Hz display, a cap at ${info.monitor_hz - 3} FPS is the sweet spot.` : null,
+    ],
+    mixed: pt ? [
+      "Nenhum componente ficou saturado: o limite veio do motor do jogo, de streaming de dados, de sincronização ou da rede.",
+      "Mantenha jogo e driver atualizados, instale o jogo num SSD NVMe e confira se não há um limite de FPS interno do jogo.",
+    ] : [
+      "No component was saturated: the limit came from the engine, asset streaming, synchronization or the network.",
+      "Keep the game and driver updated, install it on an NVMe SSD and check for an in-game FPS limit.",
+    ],
+  };
+  return (list[b] || []).filter(Boolean);
+}
+
+function alerts() {
+  const ch = D.channels || {}, out = [], pt = LANG !== "en";
+  const peak = (k) => ch[k] && ch[k].max;
+  if (peak("gpu_hotspot") >= 100) out.push(["bad", pt ? `Hotspot da GPU chegou a ${nf(peak("gpu_hotspot"))} °C.` : `GPU hotspot reached ${nf(peak("gpu_hotspot"))} °C.`]);
+  if (peak("vram_temperature") >= 100) out.push(["bad", pt ? `Temperatura da VRAM (junction) chegou a ${nf(peak("vram_temperature"))} °C: GDDR6X começa a reduzir desempenho perto de 110 °C.` : `VRAM junction temperature reached ${nf(peak("vram_temperature"))} °C: GDDR6X throttles near 110 °C.`]);
+  if (peak("cpu_temperature") && hw.cpu_tjmax && peak("cpu_temperature") >= hw.cpu_tjmax - 3) out.push(["bad", pt ? `CPU encostou no limite térmico (${nf(peak("cpu_temperature"))} °C de ${nf(hw.cpu_tjmax)} °C).` : `CPU touched its thermal limit (${nf(peak("cpu_temperature"))} °C of ${nf(hw.cpu_tjmax)} °C).`]);
+  if (ch.vram_usage_percent && ch.vram_usage_percent.max >= 92) out.push(["warn", pt ? `VRAM chegou a ${nf(ch.vram_usage_percent.max)}% de uso.` : `VRAM peaked at ${nf(ch.vram_usage_percent.max)}% usage.`]);
+  if (info.etw_events_lost > 0) out.push(["warn", pt ? `${nf(info.etw_events_lost)} eventos ETW perdidos: o FPS pode estar levemente subestimado.` : `${nf(info.etw_events_lost)} ETW events lost: FPS may be slightly underestimated.`]);
+  if (D.stutters.length && D.stutters.length / Math.max(1, (F.active_sec || 1) / 60) > 3) out.push(["warn", pt ? "Muitos stutters por minuto: compilação de shaders e streaming de assets são suspeitos comuns, e o primeiro minuto após um update costuma ser o pior." : "Many stutters per minute: shader compilation and asset streaming are the usual suspects, and the first session after an update is often the worst."]);
+  return out;
+}
+
+function verdict() {
+  const bn = D.bottleneck, off = bn.offender;
+  const capDominates = off === "frame_cap";
+  const title = capDominates ? T("noBottleneck") : `${T("mainBottleneck")}: ${bName(off)}`;
+  const shares = B_KEYS.slice(0, 8).map((k) => [k, bn.shares[k] || 0]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const al = alerts();
+  const sec = el("section", { class: "card" });
+  sec.innerHTML = `<h2>${T("verdict")}</h2>
+    <div class="verdict">
+      <div>
+        <div class="headline"><div class="icon" style="background:${bColor(off)}">${esc(bName(off).slice(0, 3).toUpperCase())}</div>
+          <div><div class="title">${esc(title)}</div><div class="muted">${esc(bTitle(off))} · <b>${pct(bn.offender_share)}</b> ${T("ofTime")}</div></div></div>
+        <ul class="tips">${tipsFor(off).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+        ${al.length ? `<div class="alerts">${al.map(([c, t]) => `<div class="alert ${c}">${esc(t)}</div>`).join("")}</div>` : ""}
+      </div>
+      <div>
+        <h3>${T("timeline")}</h3>
+        <div class="sharebar">${shares.map(([k, v]) => `<div title="${esc(bName(k))} ${pct(v)}" style="width:${v * 100}%;background:${bColor(k)}"></div>`).join("")}</div>
+        <div class="legend">${shares.map(([k, v]) => `<div class="row"><span class="dot" style="background:${bColor(k)}"></span>${esc(bName(k))}<span class="pct">${pct(v)}</span></div>`).join("")}</div>
+      </div>
+    </div>`;
+  app.append(sec);
+}
+
+function backgroundSpans() {
+  const spans = [], t = S.t || [], fg = S.foreground || [];
+  let from = null;
+  for (let i = 0; i < t.length; i++) {
+    if (!fg[i] && from === null) from = i ? t[i - 1] : 0;
+    if (fg[i] && from !== null) { spans.push({ from, to: t[i - 1], color: css("--grid") }); from = null; }
+  }
+  if (from !== null) spans.push({ from, to: t[t.length - 1], color: css("--grid") });
+  return spans;
+}
+
+function performance() {
+  if (!has("fps") || !S.t || !S.t.length) return;
+  const sec = el("section", { class: "card" });
+  sec.innerHTML = `<div class="chart-head"><h2 style="margin:0">${T("performance")}</h2>
+    <div class="keys"><span><i style="background:${css("--accent")}"></i>${T("fpsSeries")}</span>
+    ${D.bottleneck.cap_fps ? `<span><i style="background:${css("--b-frame_cap")}"></i>${T("capLine")}</span>` : ""}
+    ${D.stutters.length ? `<span><i style="background:${css("--bad")}"></i>${T("stutterMark")}</span>` : ""}
+    <span><i style="background:${css("--b-gpu")}"></i>${T("timeline")}</span></div></div>`;
+  app.append(sec);
+  const bIdx = S.bottleneck || [];
+  Chart(sec, {
+    x: S.t, height: 280, unit: "",
+    series: [{ label: "FPS", values: S.fps, color: css("--accent"), width: 1.8, decimals: 0, fill: alpha(css("--accent"), 0.12) }],
+    spans: backgroundSpans(),
+    hLines: D.bottleneck.cap_fps ? [{ y: D.bottleneck.cap_fps, label: `${T("capLine")} ${nf(D.bottleneck.cap_fps)}`, color: css("--b-frame_cap") }] : [],
+    markers: D.stutters.map((s) => ({ x: s.t, color: css("--bad") })),
+    strip: { color: (i) => bColor(B_KEYS[bIdx[i]] || "mixed") },
+    extraTip: (i) => {
+      const row = (label, v, u) => v == null ? "" : `<div class="r">${label}<b>${nf(v)}${u}</b></div>`;
+      return `<div class="r"><span class="dot" style="background:${bColor(B_KEYS[bIdx[i]] || "mixed")}"></span>${esc(bName(B_KEYS[bIdx[i]] || "mixed"))}</div>` +
+        row("GPU", S.gpu_usage && S.gpu_usage[i], "%") + row("CPU", S.cpu_usage && S.cpu_usage[i], "%") +
+        row(T("busiestThread"), S.game_busiest_thread && S.game_busiest_thread[i], "%");
+    },
+  });
+}
+
+function frametime() {
+  if (!has("frametime_graph") || !D.envelope || !D.envelope.t.length) return;
+  const E = D.envelope;
+  const sec = el("section", { class: "card" });
+  sec.innerHTML = `<div class="chart-head"><h2 style="margin:0">${T("frametime")}</h2>
+    <div class="keys"><span><i style="background:${css("--accent-2")}"></i>${T("avgFt")}</span><span><i style="background:${alpha(css("--accent-2"), 0.35)};height:8px"></i>${T("envelope")}</span></div></div>`;
+  app.append(sec);
+  Chart(sec, {
+    x: E.t, height: 220, unit: " ms", yCap: Math.max(F.ft_p999 * 2.2, F.ft_median * 4),
+    band: { lo: E.min, hi: E.max, color: alpha(css("--accent-2"), 0.25) },
+    series: [{ label: T("avgFt"), values: E.avg, color: css("--accent-2"), width: 1.4, decimals: 2 },
+             { label: T("max"), values: E.max, color: "transparent", width: 0, decimals: 1 }],
+    spans: backgroundSpans(),
+  });
+  const grid = el("div", { class: "grid2", style: "margin-top:18px" });
+  const histo = el("div", {}, `<h3 style="margin-bottom:8px">${T("histogram")}</h3>`);
+  const pctBox = el("div", {}, `<h3 style="margin-bottom:8px">${T("percentiles")}</h3>`);
+  grid.append(histo, pctBox); sec.append(grid);
+  const H = F.histogram || [];
+  barChart(histo, { labels: H.map((b) => nf(b[0], b[0] < 10 ? 1 : 0)), values: H.map((b) => b[2]), color: css("--accent-2"), unit: "", highlight: (i) => H[i][0] >= F.ft_median * 2.5 });
+  const show = [50, 90, 95, 99, 99.9, 99.99, 100];
+  const rows = (F.percentiles || []).filter((p) => show.includes(p[0]));
+  pctBox.innerHTML += `<table><thead><tr><th>${T("percentile")}</th><th class="n">ms</th><th class="n">FPS</th></tr></thead><tbody>${rows.map((p) => `<tr><td>p${nf(p[0], p[0] % 1 ? 2 : 0)}</td><td class="n">${nf(p[1], 2)}</td><td class="n">${nf(1000 / p[1], 1)}</td></tr>`).join("")}</tbody></table>`;
+}
+
+// One small chart per selected sensor ("small multiples").
+const SENSOR_GROUPS = [
+  ["gpu", [
+    ["gpu_usage", "metric.gpu_usage", "%", 0, 100], ["gpu_temperature", "metric.gpu_temperature", " °C", 0], ["gpu_hotspot", "metric.gpu_hotspot", " °C", 0],
+    ["gpu_core_clock", "metric.gpu_core_clock", " MHz", 0], ["gpu_memory_clock", "metric.gpu_memory_clock", " MHz", 0], ["gpu_power", "metric.gpu_power", " W", 0],
+    ["gpu_voltage", "metric.gpu_voltage", " V", 3], ["gpu_fan", "metric.gpu_fan", "%", 0, 100], ["gpu_fan_rpm", "fanRpm", " rpm", 0, null, "gpu_fan"],
+  ]],
+  ["vram", [["vram_used_gb", "metric.vram_used_gb", " GB", 2], ["vram_usage_percent", "metric.vram_usage_percent", "%", 1, 100], ["vram_temperature", "metric.vram_temperature", " °C", 0]]],
+  ["cpu", [
+    ["cpu_usage", "metric.cpu_usage", "%", 0, 100], ["cpu_busiest_core", "metric.cpu_busiest_core", "%", 0, 100], ["game_busiest_thread", "busiestThread", "%", 0, 100, "cpu_busiest_core"],
+    ["cpu_temperature", "metric.cpu_temperature", " °C", 0], ["cpu_clock_average", "metric.cpu_clock_average", " MHz", 0], ["cpu_clock_max", "metric.cpu_clock_max", " MHz", 0],
+    ["cpu_power", "metric.cpu_power", " W", 0],
+  ]],
+  ["ram", [["ram_used_gb", "metric.ram_used_gb", " GB", 1], ["ram_usage_percent", "metric.ram_usage_percent", "%", 0, 100], ["game_working_set_gb", "workingSet", " GB", 1, null, "ram_used_gb"]]],
+];
+const METRIC_LABELS = {
+  "pt-BR": { "metric.gpu_usage": "Uso", "metric.gpu_temperature": "Temperatura", "metric.gpu_hotspot": "Hotspot", "metric.gpu_core_clock": "Clock do núcleo", "metric.gpu_memory_clock": "Clock da memória", "metric.gpu_power": "Consumo", "metric.gpu_voltage": "Tensão do núcleo", "metric.gpu_fan": "Ventoinha", "metric.vram_used_gb": "Usada", "metric.vram_usage_percent": "Uso", "metric.vram_temperature": "Temperatura (junction)", "metric.cpu_usage": "Uso total", "metric.cpu_busiest_core": "Núcleo mais ocupado", "metric.cpu_temperature": "Temperatura (pacote)", "metric.cpu_clock_average": "Clock médio", "metric.cpu_clock_max": "Clock máximo (núcleo)", "metric.cpu_power": "Consumo (pacote)", "metric.ram_used_gb": "Usada", "metric.ram_usage_percent": "Uso" },
+  "en": { "metric.gpu_usage": "Usage", "metric.gpu_temperature": "Temperature", "metric.gpu_hotspot": "Hotspot", "metric.gpu_core_clock": "Core clock", "metric.gpu_memory_clock": "Memory clock", "metric.gpu_power": "Power", "metric.gpu_voltage": "Core voltage", "metric.gpu_fan": "Fan", "metric.vram_used_gb": "Used", "metric.vram_usage_percent": "Usage", "metric.vram_temperature": "Temperature (junction)", "metric.cpu_usage": "Total usage", "metric.cpu_busiest_core": "Busiest core", "metric.cpu_temperature": "Temperature (package)", "metric.cpu_clock_average": "Average clock", "metric.cpu_clock_max": "Max clock (core)", "metric.cpu_power": "Power (package)", "metric.ram_used_gb": "Used", "metric.ram_usage_percent": "Usage" },
+};
+const label = (k) => METRIC_LABELS[LANG][k] || T(k);
+const GROUP_COLORS = { gpu: "#16a34a", vram: "#9333ea", cpu: "#f59e0b", ram: "#db2777" };
+
+function sensors() {
+  const ch = D.channels || {};
+  SENSOR_GROUPS.forEach(([group, metrics]) => {
+    const visible = metrics.filter(([key, , , , , gate]) => has(gate || key) && S[key]);
+    const limiter = group === "gpu" && has("gpu_limiter") && (S.gpu_limiter || []).some((v) => v != null);
+    if (!visible.length && !limiter) return;
+    const head = el("div", { class: "group-title" }, `<h2>${T(group)}</h2><div class="line"></div>`);
+    app.append(head);
+    const grid = el("section", { class: "grid3" });
+    app.append(grid);
+    visible.forEach(([key, labelKey, unit, decimals, yMax]) => {
+      const c = ch[key];
+      const card = el("div", { class: "card mini" });
+      card.innerHTML = `<div class="top"><h3>${esc(label(labelKey))}</h3><div class="big">${c ? nf(c.avg, decimals) + unit : `<span class="na">${T("na")}</span>`}</div></div>
+        <div class="stats">${c ? `<span>${T("median")} ${nf(c.median, decimals)}</span><span>${T("min")} ${nf(c.min, decimals)}</span><span>${T("max")} ${nf(c.max, decimals)}</span><span>${T("p95")} ${nf(c.p95, decimals)}</span>` : ""}</div>`;
+      grid.append(card);
+      if (c) Chart(card, { x: S.t, height: 110, unit: unit.trim() === "%" ? "%" : "", yMax: yMax ?? undefined, yMin: yMax === 100 ? 0 : undefined,
+        series: [{ label: label(labelKey), values: S[key], color: GROUP_COLORS[group], width: 1.4, decimals, unit, fill: alpha(GROUP_COLORS[group], 0.1) }],
+        spans: backgroundSpans() });
+    });
+    if (limiter) {
+      const counts = { power: 0, thermal: 0, hw: 0, idle: 0, none: 0 }; let total = 0;
+      S.gpu_limiter.forEach((v, i) => {
+        if (v == null || !S.foreground[i]) return; total++;
+        if (v & 2) counts.thermal++; else if (v & 4) counts.hw++; else if (v & 1) counts.power++; else if (v & 8) counts.idle++; else counts.none++;
+      });
+      const rows = [["power", T("limPower"), "#f59e0b"], ["thermal", T("limThermal"), "#dc2626"], ["hw", T("limHw"), "#9333ea"], ["idle", T("limIdle"), "#94a3b8"], ["none", T("limNone"), "#16a34a"]]
+        .filter(([k]) => counts[k] > 0);
+      const card = el("div", { class: "card mini" });
+      card.innerHTML = `<div class="top"><h3>${T("limiter")}</h3></div>
+        <div class="sharebar" style="margin-top:12px">${rows.map(([k, , c]) => `<div style="width:${counts[k] / total * 100}%;background:${c}"></div>`).join("")}</div>
+        <div class="legend">${rows.map(([k, l, c]) => `<div class="row"><span class="dot" style="background:${c}"></span>${l}<span class="pct">${nf(counts[k] / total * 100)}%</span></div>`).join("")}</div>`;
+      grid.append(card);
+    }
+  });
+}
+
+function energy() {
+  const E = D.energy;
+  const sec = el("section", { class: "card" });
+  const parts = [];
+  if (E.gpu.measured) parts.push({ value: E.gpu.wh, color: GROUP_COLORS.gpu, label: T("gpuEnergy") });
+  if (E.cpu.measured) parts.push({ value: E.cpu.wh, color: GROUP_COLORS.cpu, label: T("cpuEnergy") });
+  const wh = E.total_wh || 0;
+  sec.innerHTML = `<h2>${T("energyTitle")}</h2><div class="energy"><div class="donut-host"></div><div>
+    <div class="facts">
+      ${[["gpu", E.gpu, T("gpuEnergy")], ["cpu", E.cpu, T("cpuEnergy")]].map(([k, c, l]) => `<div class="fact"><div class="l"><span class="dot" style="display:inline-block;background:${GROUP_COLORS[k]};margin-right:6px"></span>${l}</div>
+        <div class="v">${c.measured ? nf(c.wh, c.wh < 100 ? 1 : 0) + " Wh" : `<span class="na">${T("notMeasured")}</span>`}</div>
+        <div class="l">${c.measured ? `${T("avgPower")} ${nf(c.avg_w)} W · ${T("peakPower")} ${nf(c.peak_w)} W` : ""}</div></div>`).join("")}
+      <div class="fact"><div class="l">${T("fpsPerWatt")}</div><div class="v">${E.fps_per_watt ? nf(E.fps_per_watt, 2) : T("na")}</div><div class="l">${T("avgPower")} ${nf(E.avg_w)} W</div></div>
+      <div class="fact"><div class="l">${T("mjPerFrame")}</div><div class="v">${E.mj_per_frame ? energyPerFrame(E.mj_per_frame) : T("na")}</div><div class="l">${nf(F.count)} ${T("frames")}</div></div>
+    </div>
+    <p class="fun">${wh > 0 ? [T("funPhone", nf(wh / 15, 1)), T("funShower", nf(wh / 5500 * 60, 1)), T("funLed", nf(wh / 9, 1))].join(" · ") : ""}</p>
+    <p class="faint" style="font-size:12px;margin:6px 0 0">${T("measuredOnly")}</p>
+  </div></div>`;
+  app.append(sec);
+  donut(sec.querySelector(".donut-host"), parts.length ? parts : [{ value: 1, color: css("--surface-2") }],
+    `<div><strong class="num">${nf(wh, wh < 100 ? 1 : 0)}</strong><span class="muted">Wh ${T("total")}</span></div>`);
+}
+
+function stutterTable() {
+  const sec = el("section", { class: "card" });
+  if (!D.stutters.length) {
+    sec.innerHTML = `<h2>${T("stutterList")}</h2><p class="muted" style="margin:0">${T("noStutters")}</p>`;
+    app.append(sec); return;
+  }
+  const worst = Math.max(...D.stutters.map((s) => s.ms));
+  const rows = D.stutters.slice().sort((a, b) => b.ms - a.ms).slice(0, 100).sort((a, b) => a.t - b.t);
+  sec.innerHTML = `<h2>${T("stutterList")} · ${nf(D.stutters.length)}</h2><div class="scroll"><table>
+    <thead><tr><th>${T("time")}</th><th class="n">${T("frameMs")}</th><th style="width:22%"></th><th class="n">${T("localMedian")}</th><th>${T("atThatMoment")}</th><th class="n">GPU</th><th class="n">CPU</th><th class="n">${T("busiestThread")}</th><th class="n">VRAM</th></tr></thead>
+    <tbody>${rows.map((s) => `<tr><td class="num">${fmtT(s.t)}</td><td class="n"><b>${nf(s.ms, 1)} ms</b></td>
+      <td><div class="sev" style="width:${Math.max(6, s.ms / worst * 100)}%"></div></td><td class="n">${nf(s.median_ms, 1)} ms</td>
+      <td><span class="dot" style="display:inline-block;background:${bColor(s.bottleneck)};margin-right:6px"></span>${esc(bName(s.bottleneck))}</td>
+      <td class="n">${s.gpu_usage == null ? "–" : nf(s.gpu_usage) + "%"}</td><td class="n">${s.cpu_usage == null ? "–" : nf(s.cpu_usage) + "%"}</td>
+      <td class="n">${s.thread == null ? "–" : nf(s.thread) + "%"}</td><td class="n">${s.vram_gb == null ? "–" : nf(s.vram_gb, 1) + " GB"}</td></tr>`).join("")}</tbody></table></div>`;
+  app.append(sec);
+}
+
+function details() {
+  const rows = [
+    [T("exe"), info.exe_path || info.exe_name], [T("window"), info.window_title],
+    [T("monitor"), info.monitor_name ? `${info.monitor_name} · ${info.monitor_width}×${info.monitor_height} @ ${info.monitor_hz} Hz` : ""],
+    [T("api"), info.present_api], [T("vsync"), info.sync_interval < 0 ? T("na") : info.sync_interval === 0 ? T("vsyncOff") : `${T("vsyncOn")} (${info.sync_interval})`],
+    [T("hardware"), [hw.cpu_name, hw.cpu_threads ? `${hw.cpu_threads} ${T("threads")}` : "", hw.gpu_name, hw.gpu_power_limit_w ? `${nf(hw.gpu_power_limit_w)} W TGP` : "", hw.os].filter(Boolean).join(" · ")],
+    [T("sources"), `GPU: ${info.gpu_source || T("na")} · CPU: ${info.cpu_sensor_source || T("na")} · FPS: ETW`],
+    [T("interval"), `${nf(info.sample_interval_sec * 1000)} ms`], [T("etwLost"), nf(info.etw_events_lost)],
+    [T("generated"), `${D.app} ${D.version}`],
+  ].filter(([, v]) => v);
+  const sec = el("section", { class: "card" });
+  sec.innerHTML = `<h2>${T("details")}</h2><dl class="details">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    <p class="faint" style="font-size:12px;margin:14px 0 0">${esc(T("method"))}</p>`;
+  app.append(sec);
+}
+
+hero();
+kpis();
+verdict();
+performance();
+frametime();
+sensors();
+app.append(el("div", { style: "height:8px" }));
+energy();
+stutterTable();
+details();
+app.append(el("footer", {}, `PerfPulse ${esc(D.version)} · ${esc(start.toLocaleString(LANG))}`));
+})();
+</script>
+</body>
+</html>

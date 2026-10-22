@@ -1,0 +1,8 @@
+#pragma once
+
+namespace perfpulse::core {
+
+inline constexpr const char* kAppName = "PerfPulse";
+inline constexpr const char* kVersion = "@PROJECT_VERSION@";
+
+}  // namespace perfpulse::core
