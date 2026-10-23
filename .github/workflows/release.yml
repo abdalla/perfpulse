@@ -1,0 +1,41 @@
+# Builds the portable zip on a Windows runner and publishes it as a GitHub
+# release whenever a version tag is pushed:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# The tag must match the project VERSION in CMakeLists.txt.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check tag matches project version
+        shell: pwsh
+        run: |
+          $cmake = Get-Content CMakeLists.txt -Raw
+          if ($cmake -notmatch 'project\(PerfPulse\s+VERSION\s+([0-9.]+)') { throw 'Version not found in CMakeLists.txt' }
+          if ("v$($Matches[1])" -ne $env:GITHUB_REF_NAME) {
+            throw "Tag $env:GITHUB_REF_NAME does not match CMakeLists.txt version v$($Matches[1])"
+          }
+
+      - name: Build, test and package
+        shell: pwsh
+        run: .\tools\package.ps1
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $zip = "build\PerfPulse-$env:GITHUB_REF_NAME-win64.zip"
+          gh release create $env:GITHUB_REF_NAME $zip --title "PerfPulse $env:GITHUB_REF_NAME" --generate-notes
