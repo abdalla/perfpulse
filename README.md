@@ -12,6 +12,22 @@ and when) and **energy consumed** by the GPU and CPU.
 - ~0.7% of **one** core while recording; ~3 MB of RAM when idle.
 - On hybrid CPUs (Intel 12th gen+), it runs in efficiency mode (EcoQoS) and leaves the P-cores to the game.
 
+## Example report
+
+A real 2h34 session of *Wardogs* (RTX 3080 Ti + i9-14900K, 1440p @ 180 Hz). The full report is in
+[`docs/examples/`](docs/examples/): download the `.html` and open it in a browser, it works offline.
+
+![Report overview: KPIs, smoothness score and bottleneck analysis](docs/images/report-overview.png)
+
+<details>
+<summary>More sections: performance timeline, sensors, energy and stutters</summary>
+
+![FPS over the session with stutters and bottleneck timeline](docs/images/report-timeline.png)
+![GPU, VRAM, CPU and RAM sensor charts](docs/images/report-sensors.png)
+![Energy used and detected stutters](docs/images/report-energy.png)
+
+</details>
+
 ## How it works
 
 | Stage | Technique |

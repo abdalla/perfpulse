@@ -12,6 +12,22 @@ ofensor e quando) e **energia consumida** por GPU e CPU.
 - ~0,7% de **um** núcleo durante a gravação; ~3 MB de RAM em espera.
 - Em CPUs híbridas (Intel 12ª gen+), roda em modo eficiência (EcoQoS) e deixa os P-cores para o jogo.
 
+## Exemplo de relatório
+
+Uma sessão real de 2h34 de *Wardogs* (RTX 3080 Ti + i9-14900K, 1440p @ 180 Hz). O relatório completo está em
+[`docs/examples/`](docs/examples/): baixe o `.html` e abra no navegador, ele funciona offline.
+
+![Visão geral do relatório: KPIs, nota de suavidade e análise de gargalo](docs/images/report-overview.png)
+
+<details>
+<summary>Mais seções: desempenho ao longo da sessão, sensores, energia e stutters</summary>
+
+![FPS ao longo da sessão com stutters e linha do tempo de gargalo](docs/images/report-timeline.png)
+![Gráficos dos sensores de GPU, VRAM, CPU e RAM](docs/images/report-sensors.png)
+![Energia consumida e stutters detectados](docs/images/report-energy.png)
+
+</details>
+
 ## Como funciona
 
 | Etapa | Técnica |

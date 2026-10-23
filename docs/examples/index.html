@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PerfPulse · Histórico</title>
+<style>
+:root {
+  --bg: #f4f4f7; --surface: #fff; --surface-2: #eeeef3; --border: #e2e2ea; --text: #17171c; --muted: #6b6b78; --faint: #9a9aa8;
+  --accent: #6d5ef7; --accent-2: #22d3ee; --good: #16a34a; --bad: #dc2626; --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(20,20,40,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111116; --surface: #1b1b22; --surface-2: #23232c; --border: #2d2d38; --text: #ececf2; --muted: #9a9aab; --faint: #6c6c7c; --shadow: 0 8px 24px rgba(0,0,0,.35); }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 20px 64px; }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+h1 { font-size: 28px; margin: 0; letter-spacing: -.02em; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; color: var(--muted); letter-spacing: .04em; }
+.brand svg { width: 22px; height: 22px; }
+input[type=search] { font: inherit; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); min-width: 260px; }
+.totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow); }
+.kpi .l { font-size: 12px; color: var(--muted); } .kpi .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.game { margin-top: 16px; }
+.game-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-bottom: 10px; }
+.game-head h2 { font-size: 20px; margin: 0; }
+.game-head .meta { color: var(--muted); font-size: 13px; }
+.trend { width: 100%; height: 90px; display: block; margin: 4px 0 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: 0; }
+a { color: var(--accent); text-decoration: none; font-weight: 600; }
+a:hover { text-decoration: underline; }
+.badge { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: #fff; font-weight: 800; font-size: 13px; }
+.delta-up { color: var(--good); } .delta-down { color: var(--bad); }
+.tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
+.scroll { overflow-x: auto; }
+.empty { text-align: center; color: var(--muted); padding: 48px 0; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script id="perfpulse-data" type="application/json">{"lang":"en","sessions":[{"avg_fps":163.7,"cpu_name":"Intel(R) Core(TM) i9-14900K","duration_sec":9284,"exe":"wardogsclient-win64-shipping.exe","file":"PerfPulse_2026-10-22_2023_Wardogs.html","fps_per_watt":0.388,"game":"Wardogs","gpu_driver":"621.01","gpu_name":"NVIDIA GeForce RTX 3080 Ti","grade":"D","low01_fps":65.2,"low1_fps":109.9,"median_fps":168.3,"offender":"frame_cap","offender_share":0.6948,"resolution":"2560x1440","score":33,"start_ms":1792711389161,"stutters":852,"total_wh":1088.55}]}</script>
+<script>
+(function () {
+"use strict";
+const D = JSON.parse(document.getElementById("perfpulse-data").textContent);
+const LANG = D.lang === "en" ? "en" : "pt-BR";
+document.documentElement.lang = LANG;
+const pt = LANG !== "en";
+const T = pt ? {
+  title: "Histórico de partidas", search: "Filtrar por jogo…", sessions: "Partidas", games: "Jogos", playtime: "Tempo de jogo", energy: "Energia total",
+  date: "Data", duration: "Duração", avg: "FPS médio", median: "Mediana", low1: "1% low", grade: "Nota", bottleneck: "Gargalo", wh: "Wh", driver: "Driver",
+  open: "abrir", vsPrev: "vs. anterior", empty: "Nenhuma partida registrada ainda. Jogue algo e o PerfPulse cuida do resto.", driverChange: "driver novo", best: "melhor média",
+} : {
+  title: "Session history", search: "Filter by game…", sessions: "Sessions", games: "Games", playtime: "Play time", energy: "Total energy",
+  date: "Date", duration: "Duration", avg: "Avg FPS", median: "Median", low1: "1% low", grade: "Grade", bottleneck: "Bottleneck", wh: "Wh", driver: "Driver",
+  open: "open", vsPrev: "vs. previous", empty: "No sessions recorded yet. Play something and PerfPulse handles the rest.", driverChange: "new driver", best: "best average",
+};
+const B = pt ? { gpu: "GPU", gpu_throttling: "GPU (throttling)", cpu: "CPU", cpu_thermal: "CPU (térmico)", vram: "VRAM", ram: "RAM", frame_cap: "Limite de FPS", mixed: "Indefinido" }
+             : { gpu: "GPU", gpu_throttling: "GPU (throttling)", cpu: "CPU", cpu_thermal: "CPU (thermal)", vram: "VRAM", ram: "RAM", frame_cap: "FPS cap", mixed: "Undetermined" };
+const GRADE = { S: "#a855f7", A: "#16a34a", B: "#65a30d", C: "#d97706", D: "#dc2626" };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nf = (v, d = 0) => v == null ? "–" : Number(v).toLocaleString(LANG, { minimumFractionDigits: d, maximumFractionDigits: d });
+const dur = (s) => { const m = Math.round((s || 0) / 60); return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}min` : `${m} min`; };
+const app = document.getElementById("app");
+const sessions = (D.sessions || []).slice().sort((a, b) => a.start_ms - b.start_ms);
+
+app.innerHTML = `<header><div><div class="brand"><svg viewBox="0 0 32 32"><defs><linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect width="32" height="32" rx="7" fill="url(#pg)"/><polyline points="4,17 10,17 13,8 17,25 20,14 22,17 28,17" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>PERFPULSE</div>
+  <h1>${T.title}</h1></div><input type="search" id="q" placeholder="${T.search}"></header><div id="totals" class="totals"></div><div id="games"></div>`;
+
+if (!sessions.length) {
+  document.getElementById("games").innerHTML = `<div class="card empty">${T.empty}</div>`;
+  return;
+}
+
+const byGame = new Map();
+sessions.forEach((s) => { const k = s.game || s.exe; if (!byGame.has(k)) byGame.set(k, []); byGame.get(k).push(s); });
+
+const total = (k) => sessions.reduce((a, s) => a + (s[k] || 0), 0);
+document.getElementById("totals").innerHTML = [
+  [T.sessions, nf(sessions.length)], [T.games, nf(byGame.size)], [T.playtime, dur(total("duration_sec"))], [T.energy, nf(total("total_wh") / 1000, 2) + " kWh"],
+].map(([l, v]) => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join("");
+
+function trend(list) {
+  const W = 1000, H = 90, P = 6;
+  const values = list.flatMap((s) => [s.avg_fps, s.low1_fps]).filter((v) => v != null);
+  const max = Math.max(...values, 1) * 1.1, n = list.length;
+  const x = (i) => n === 1 ? W / 2 : P + i * (W - 2 * P) / (n - 1);
+  const y = (v) => H - P - v / max * (H - 2 * P);
+  const line = (k, color, w) => `<polyline fill="none" stroke="${color}" stroke-width="${w}" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="${list.map((s, i) => `${x(i)},${y(s[k] || 0)}`).join(" ")}"/>`;
+  const dots = list.map((s, i) => `<circle cx="${x(i)}" cy="${y(s.avg_fps || 0)}" r="3.5" fill="#6d5ef7"><title>${new Date(s.start_ms).toLocaleString(LANG)} · ${nf(s.avg_fps, 1)} FPS</title></circle>`).join("");
+  return `<svg class="trend" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${line("low1_fps", "#22d3ee", 1.5)}${line("avg_fps", "#6d5ef7", 2.2)}${dots}</svg>`;
+}
+
+const games = [...byGame.entries()].sort((a, b) => b[1][b[1].length - 1].start_ms - a[1][a[1].length - 1].start_ms);
+document.getElementById("games").innerHTML = games.map(([name, list]) => {
+  const best = Math.max(...list.map((s) => s.avg_fps || 0));
+  const rows = list.slice().reverse().map((s, idx, arr) => {
+    const prev = arr[idx + 1];
+    const delta = prev && prev.avg_fps ? (s.avg_fps - prev.avg_fps) / prev.avg_fps * 100 : null;
+    const driverChanged = prev && prev.gpu_driver && s.gpu_driver && prev.gpu_driver !== s.gpu_driver;
+    return `<tr><td>${esc(new Date(s.start_ms).toLocaleString(LANG, { dateStyle: "medium", timeStyle: "short" }))}</td><td class="n">${dur(s.duration_sec)}</td>
+      <td class="n"><b>${nf(s.avg_fps, 1)}</b>${delta == null ? "" : ` <span class="${delta >= 0 ? "delta-up" : "delta-down"}" title="${T.vsPrev}">${delta >= 0 ? "▲" : "▼"}${nf(Math.abs(delta), 1)}%</span>`}</td>
+      <td class="n">${nf(s.median_fps, 1)}</td><td class="n">${nf(s.low1_fps, 1)}</td>
+      <td><span class="badge" style="background:${GRADE[s.grade] || "#888"}">${esc(s.grade)}</span> <span class="tag">${s.score}</span></td>
+      <td>${esc(B[s.offender] || s.offender)} <span class="tag">${nf((s.offender_share || 0) * 100)}%</span></td>
+      <td class="n">${nf(s.total_wh, 1)}</td>
+      <td>${esc(s.gpu_driver || "")}${driverChanged ? ` <span class="tag">${T.driverChange}</span>` : ""}</td>
+      <td><a href="${encodeURI(s.file)}">${T.open} →</a></td></tr>`;
+  }).join("");
+  return `<section class="card game" data-name="${esc(name.toLowerCase())}">
+    <div class="game-head"><h2>${esc(name)}</h2><span class="meta">${nf(list.length)} ${T.sessions.toLowerCase()} · ${dur(list.reduce((a, s) => a + s.duration_sec, 0))} · ${T.best} ${nf(best, 1)} FPS</span></div>
+    ${trend(list)}
+    <div class="scroll"><table><thead><tr><th>${T.date}</th><th class="n">${T.duration}</th><th class="n">${T.avg}</th><th class="n">${T.median}</th><th class="n">${T.low1}</th><th>${T.grade}</th><th>${T.bottleneck}</th><th class="n">${T.wh}</th><th>${T.driver}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+  </section>`;
+}).join("");
+
+document.getElementById("q").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll(".game").forEach((g) => { g.style.display = !q || g.dataset.name.includes(q) ? "" : "none"; });
+});
+})();
+</script>
+</body>
+</html>
