@@ -1,47 +1,49 @@
 # PerfPulse
 
-Gravador de desempenho de jogos para Windows, leve e sem injeção: fica na bandeja,
-percebe sozinho quando um jogo começa, grava FPS/frametime e sensores durante a
-partida e, quando o jogo fecha, gera um **relatório HTML offline** com resumo,
-médias, medianas, nota de suavidade, **diagnóstico de gargalo** (quem foi o
-ofensor e quando) e **energia consumida** por GPU e CPU.
+**English** · [Português](README.pt-BR.md)
 
-- Um único `PerfPulse.exe` (~0,9 MB, C++20/Win32, sem runtime externo).
-- ~0,7% de **um** núcleo durante a gravação; ~3 MB de RAM em espera.
-- Em CPUs híbridas (Intel 12ª gen+), roda em modo eficiência (EcoQoS) e deixa os P-cores para o jogo.
+Lightweight, injection-free game performance recorder for Windows: it sits in the tray,
+notices on its own when a game starts, records FPS/frametime and sensors during the
+session and, when the game closes, produces an **offline HTML report** with a summary,
+averages, medians, a smoothness score, a **bottleneck diagnosis** (what the offender was
+and when) and **energy consumed** by the GPU and CPU.
 
-## Como funciona
+- A single `PerfPulse.exe` (~0.9 MB, C++20/Win32, no external runtime).
+- ~0.7% of **one** core while recording; ~3 MB of RAM when idle.
+- On hybrid CPUs (Intel 12th gen+), it runs in efficiency mode (EcoQoS) and leaves the P-cores to the game.
 
-| Etapa | Técnica |
+## How it works
+
+| Stage | Technique |
 |---|---|
-| Detectar o jogo | A cada 2 s: janela em primeiro plano no monitor escolhido, cobrindo a tela (tela cheia ou sem bordas) e apresentando ≥ 10 frames/s por *N* segundos. Listas "sempre"/"nunca monitorar" têm prioridade. |
-| FPS e frametime | Consumidor ETW em tempo real (DXGI, D3D9 e DxgKrnl, o mesmo método do PresentMon), com filtro por ID de evento no kernel. Cada frame é registrado, o que permite 1% e 0.1% low corretos. |
-| GPU NVIDIA | NVML (uso, temperatura, clocks, consumo, ventoinha, VRAM, limitador) + NVAPI (hotspot, junction da VRAM, tensão). |
-| GPU AMD/Intel | WDDM: contadores "GPU Engine"/"GPU Adapter Memory" + `D3DKMTQueryAdapterInfo` (temperatura, clocks, ventoinha, tensão). |
-| CPU | Uso por núcleo e **thread mais ocupada do jogo** (NtQuerySystemInformation); clock efetivo (PDH); temperatura e consumo via **PawnIO** → HWiNFO → LibreHardwareMonitor. |
-| Relatório | Análise em C++, HTML único com gráficos em canvas embutidos (sem internet), PT-BR/EN, claro/escuro. |
+| Game detection | Every 2 s: foreground window on the chosen monitor, covering the screen (fullscreen or borderless) and presenting ≥ 10 frames/s for *N* seconds. "Always"/"never monitor" lists take priority. |
+| FPS and frametime | Real-time ETW consumer (DXGI, D3D9 and DxgKrnl, the same method as PresentMon), with event ID filtering in the kernel. Every frame is recorded, which gives correct 1% and 0.1% lows. |
+| NVIDIA GPU | NVML (usage, temperature, clocks, power, fan, VRAM, limiter) + NVAPI (hotspot, VRAM junction, voltage). |
+| AMD/Intel GPU | WDDM: "GPU Engine"/"GPU Adapter Memory" counters + `D3DKMTQueryAdapterInfo` (temperature, clocks, fan, voltage). |
+| CPU | Per-core usage and the **game's busiest thread** (NtQuerySystemInformation); effective clock (PDH); temperature and power via **PawnIO** → HWiNFO → LibreHardwareMonitor. |
+| Report | Analysis in C++, a single HTML file with embedded canvas charts (no internet needed), PT-BR/EN, light/dark. |
 
-Os dados ficam em memória durante o jogo: nada é gravado em disco até a partida acabar.
+Data stays in memory while you play: nothing is written to disk until the session ends.
 
-## Requisitos
+## Requirements
 
-- Windows 10 21H2+ ou Windows 11, x64.
-- Executar como administrador (o manifesto já pede). ETW de apresentação e PawnIO exigem elevação.
-  A opção **Iniciar com o Windows** cria uma tarefa agendada elevada, então não aparece UAC no logon.
-- Para temperatura e consumo da CPU: [PawnIO](https://pawnio.eu) instalado + módulos na pasta `modules\` ao lado do exe
-  (`tools\fetch_pawnio_modules.ps1`). Alternativas: HWiNFO com *Shared Memory Support* ou LibreHardwareMonitor abertos.
+- Windows 10 21H2+ or Windows 11, x64.
+- Run as administrator (the manifest already requests it). Present ETW and PawnIO require elevation.
+  The **Start with Windows** option creates an elevated scheduled task, so no UAC prompt appears at logon.
+- For CPU temperature and power: [PawnIO](https://pawnio.eu) installed + modules in the `modules\` folder next to the exe
+  (`tools\fetch_pawnio_modules.ps1`). Alternatives: HWiNFO with *Shared Memory Support* or LibreHardwareMonitor running.
 
-## Compilar
+## Building
 
-Pré-requisitos: Visual Studio 2022 Build Tools (workload C++, Windows SDK 10.0.22621+, CMake e Ninja).
+Prerequisites: Visual Studio 2022 Build Tools (C++ workload, Windows SDK 10.0.22621+, CMake and Ninja).
 
 ```powershell
-.\tools\fetch_pawnio_modules.ps1   # uma vez: módulos assinados do PawnIO
-.\tools\build.ps1                  # Release + testes -> build\release\PerfPulse.exe
+.\tools\fetch_pawnio_modules.ps1   # once: signed PawnIO modules
+.\tools\build.ps1                  # Release + tests -> build\release\PerfPulse.exe
 .\tools\build.ps1 -Config debug
 ```
 
-Ou direto com CMake, num *Developer PowerShell*:
+Or directly with CMake, from a *Developer PowerShell*:
 
 ```powershell
 cmake --preset release
@@ -49,63 +51,63 @@ cmake --build --preset release
 ctest --preset release
 ```
 
-> O repositório pode ficar num caminho UNC (`\\wsl.localhost\...`); o `build.ps1` mapeia uma letra de unidade
-> durante o build, porque CMake e Ninja não lidam bem com UNC.
+> The repository can live on a UNC path (`\\wsl.localhost\...`); `build.ps1` maps a drive letter
+> during the build, because CMake and Ninja don't handle UNC paths well.
 
-## Usar
+## Usage
 
-1. Rode `PerfPulse.exe`. Na primeira vez a janela de configurações abre; depois ele vai direto para a bandeja.
-2. Jogue. O ícone fica âmbar enquanto confirma o jogo e ganha um ponto vermelho quando está gravando.
-3. Feche o jogo (ou use **Encerrar gravação** no menu): o relatório vai para `Documentos\PerfPulse\Reports`
-   e o `index.html` dessa pasta compara todas as partidas por jogo.
+1. Run `PerfPulse.exe`. On first run the settings window opens; after that it goes straight to the tray.
+2. Play. The icon turns amber while it confirms the game and gets a red dot while recording.
+3. Close the game (or use **Stop recording** in the menu): the report goes to `Documents\PerfPulse\Reports`
+   and the `index.html` in that folder compares all sessions per game.
 
-Bandeja: **duplo clique** abre as configurações; **botão direito** mostra o menu (ativar/pausar, último relatório,
-histórico, pasta, relatório de demonstração, sair).
+Tray: **double-click** opens the settings; **right-click** shows the menu (enable/pause, latest report,
+history, folder, demo report, exit).
 
-### Linha de comando
+### Command line
 
-| Argumento | Efeito |
+| Argument | Effect |
 |---|---|
-| `--autostart` | Usado pela tarefa de logon (não abre a configuração na primeira execução). |
-| `--diag [--out arquivo.txt]` | Diagnóstico: fontes de sensores, 3 amostras e taxa de *presents* por processo por 10 s. |
-| `--demo-report [--out arquivo.txt]` | Gera um relatório a partir de uma sessão sintética de 18 min. |
-| `--exit` | Pede à instância em execução que salve o relatório da partida atual e feche. |
-| `--reanalyze relatório.html [--to novo.html]` | Refaz a análise de gargalo de um relatório antigo com as regras e o template atuais (no próprio arquivo, a menos que `--to` seja dado) e atualiza o histórico ao lado dele. As estatísticas de frame continuam as originais, porque os frames brutos não ficam salvos. |
+| `--autostart` | Used by the logon task (doesn't open the settings on first run). |
+| `--diag [--out file.txt]` | Diagnostics: sensor sources, 3 samples and per-process *present* rate for 10 s. |
+| `--demo-report [--out file.txt]` | Generates a report from an 18-minute synthetic session. |
+| `--exit` | Asks the running instance to save the current session's report and exit. |
+| `--reanalyze report.html [--to new.html]` | Re-runs the bottleneck analysis of an old report with the current rules and template (in place, unless `--to` is given) and updates the history next to it. Frame statistics stay as originally recorded, because raw frames are not saved. |
 
-## O relatório
+## The report
 
-- **Resumo**: jogo, data, duração (tempo ativo × segundo plano), hardware, resolução, API e V-Sync.
-- **KPIs**: FPS médio e mediano, 1% e 0.1% low, frametime mediano/p99, stutters por minuto, Wh e FPS por watt.
-- **Nota de suavidade** de 0 a 100 (S/A/B/C/D): consistência local (45%), stutters por minuto (35%) e regularidade entre frames (20%).
-- **Gargalo**: cada amostra é classificada como GPU, GPU (throttling), CPU, CPU (térmico), VRAM, RAM, limite de FPS,
-  indefinido, carregamento ou segundo plano. O relatório mostra a linha do tempo, o ofensor principal e dicas específicas.
-- **Stutters**: cada travada, com o horário e o estado do hardware naquele instante.
-- **Sensores**: um gráfico por métrica escolhida, com média, mediana, mínimo, máximo e p95.
-- **Energia**: Wh de GPU e CPU (somente o que é medido de verdade), potência média e de pico, energia por frame.
+- **Summary**: game, date, duration (active × background time), hardware, resolution, API and V-Sync.
+- **KPIs**: average and median FPS, 1% and 0.1% lows, median/p99 frametime, stutters per minute, Wh and FPS per watt.
+- **Smoothness score** from 0 to 100 (S/A/B/C/D): local consistency (45%), stutters per minute (35%) and frame-to-frame regularity (20%).
+- **Bottleneck**: each sample is classified as GPU, GPU (throttling), CPU, CPU (thermal), VRAM, RAM, FPS cap,
+  undetermined, loading or background. The report shows the timeline, the main offender and specific tips.
+- **Stutters**: every hitch, with its timestamp and the hardware state at that moment.
+- **Sensors**: one chart per chosen metric, with average, median, minimum, maximum and p95.
+- **Energy**: GPU and CPU Wh (only what is actually measured), average and peak power, energy per frame.
 
-## Estrutura
+## Layout
 
 ```
 src/
-  core/       config, JSON, i18n, métricas, caminhos, log
-  capture/    consumidor ETW de presents
-  detection/  detector de jogo, monitores, informações de processo
-  sensors/    NVIDIA, WDDM genérico, CPU, PawnIO/HWiNFO/LHM, memória
-  session/    modelo de dados e gravador da sessão
-  analysis/   estatísticas de frame, stutter, nota, gargalo, energia
-  report/     payload JSON, gerador HTML, histórico, sessão de demonstração
-  app/        bandeja, janela de configurações, tema, autostart, diagnóstico
-resources/    ícone, manifesto, templates HTML do relatório e do histórico
-tests/        testes unitários (ctest) e um "jogo falso" D3D11 para testes ponta a ponta
-tools/        build, ícone e download dos módulos PawnIO
-docs/         arquitetura e padrão de código
+  core/       config, JSON, i18n, metrics, paths, log
+  capture/    ETW present consumer
+  detection/  game detector, monitors, process info
+  sensors/    NVIDIA, generic WDDM, CPU, PawnIO/HWiNFO/LHM, memory
+  session/    session data model and recorder
+  analysis/   frame statistics, stutter, score, bottleneck, energy
+  report/     JSON payload, HTML generator, history, demo session
+  app/        tray, settings window, theme, autostart, diagnostics
+resources/    icon, manifest, HTML templates for the report and history
+tests/        unit tests (ctest) and a D3D11 "fake game" for end-to-end tests
+tools/        build, icon and PawnIO module download
+docs/         architecture and coding style
 ```
 
-Veja [docs/architecture.md](docs/architecture.md) e [docs/coding-style.md](docs/coding-style.md).
+See [docs/architecture.md](docs/architecture.md) and [docs/coding-style.md](docs/coding-style.md).
 
-## Limitações conhecidas (v0.1)
+## Known limitations (v0.1)
 
-- Sem overlay durante o jogo (fase 2).
-- Em AMD/Intel, o consumo da GPU em watts não é exposto pelo WDDM: fica "não medido" até a integração com ADLX/IGCL.
-- A energia considera só GPU e pacote da CPU; placa-mãe, RAM, SSD, ventoinhas e perdas da fonte ficam de fora.
-- FPS = frequência de chamadas *Present* da aplicação (como o "FPS" do PresentMon), não frames exibidos pelo monitor.
+- No in-game overlay (phase 2).
+- On AMD/Intel, GPU power in watts isn't exposed by WDDM: it stays "not measured" until ADLX/IGCL integration.
+- Energy only covers the GPU and CPU package; motherboard, RAM, SSD, fans and PSU losses are left out.
+- FPS = the application's *Present* call rate (like PresentMon's "FPS"), not frames shown by the monitor.
