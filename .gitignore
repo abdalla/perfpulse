@@ -7,3 +7,34 @@
 CMakeUserPresets.json
 # PawnIO modules are signed third-party blobs, fetched by tools/fetch_pawnio_modules.ps1
 /modules/*.bin
+
+# CMake / build artifacts outside /build
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+compile_commands.json
+Testing/
+
+# Compiled binaries and debug symbols
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.obj
+*.lib
+*.exp
+
+# IDEs and tooling
+.idea/
+.cache/
+.claude/settings.local.json
+
+# Logs, local data and environment files
+*.log
+.env
+.env.*
+
+# OS junk
+Thumbs.db
+desktop.ini
+.DS_Store
