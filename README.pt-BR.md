@@ -12,6 +12,15 @@ ofensor e quando) e **energia consumida** por GPU e CPU.
 - ~0,7% de **um** núcleo durante a gravação; ~3 MB de RAM em espera.
 - Em CPUs híbridas (Intel 12ª gen+), roda em modo eficiência (EcoQoS) e deixa os P-cores para o jogo.
 
+## Download
+
+Baixe o `PerfPulse-vX.Y.Z-win64.zip` do [último release](https://github.com/abdalla/perfpulse/releases/latest),
+extraia onde quiser e rode o `PerfPulse.exe`. Sem instalador e sem runtime para instalar.
+
+> O exe não tem assinatura digital, então o SmartScreen pode mostrar *"O Windows protegeu o computador"*:
+> clique em **Mais informações → Executar assim mesmo**. Para temperatura e consumo da CPU, instale também
+> o driver [PawnIO](https://pawnio.eu) (`winget install namazso.PawnIO`).
+
 ## Exemplo de relatório
 
 Uma sessão real de 2h34 de *Wardogs* (RTX 3080 Ti + i9-14900K, 1440p @ 180 Hz). O relatório completo está em
@@ -57,6 +66,7 @@ Pré-requisitos: Visual Studio 2022 Build Tools (workload C++, Windows SDK 10.0.
 .\tools\fetch_pawnio_modules.ps1   # uma vez: módulos assinados do PawnIO
 .\tools\build.ps1                  # Release + testes -> build\release\PerfPulse.exe
 .\tools\build.ps1 -Config debug
+.\tools\package.ps1                # Release + testes -> build\PerfPulse-vX.Y.Z-win64.zip
 ```
 
 Ou direto com CMake, num *Developer PowerShell*:
@@ -127,3 +137,7 @@ Veja [docs/architecture.md](docs/architecture.md) e [docs/coding-style.md](docs/
 - Em AMD/Intel, o consumo da GPU em watts não é exposto pelo WDDM: fica "não medido" até a integração com ADLX/IGCL.
 - A energia considera só GPU e pacote da CPU; placa-mãe, RAM, SSD, ventoinhas e perdas da fonte ficam de fora.
 - FPS = frequência de chamadas *Present* da aplicação (como o "FPS" do PresentMon), não frames exibidos pelo monitor.
+
+## Licença
+
+[MIT](LICENSE). Os módulos PawnIO incluídos no zip do release são [LGPL-2.1](https://github.com/namazso/PawnIO.Modules).
