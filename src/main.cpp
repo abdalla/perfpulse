@@ -31,6 +31,8 @@ struct Arguments {
     bool diagnostics = false;
     bool demoReport = false;
     bool exitRunning = false;
+    std::filesystem::path reanalyze;
+    std::filesystem::path reanalyzeTo;
     std::filesystem::path output;
 };
 
@@ -48,6 +50,10 @@ Arguments parseArguments() {
             args.demoReport = true;
         } else if (arg == L"--exit") {
             args.exitRunning = true;
+        } else if (arg == L"--reanalyze" && i + 1 < count) {
+            args.reanalyze = argv[++i];
+        } else if (arg == L"--to" && i + 1 < count) {
+            args.reanalyzeTo = argv[++i];
         } else if (arg == L"--out" && i + 1 < count) {
             args.output = argv[++i];
         }
@@ -75,6 +81,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         exitCode = app::runDiagnostics(args.output);
     } else if (args.demoReport) {
         exitCode = app::runDemoReport(args.output);
+    } else if (!args.reanalyze.empty()) {
+        exitCode = app::runReanalyze(args.reanalyze, args.reanalyzeTo, args.output);
     } else if (args.exitRunning) {
         // Asks a running instance to finish its session report and quit.
         if (HWND existing = FindWindowW(app::kHostClassName, nullptr)) {

@@ -42,6 +42,7 @@ add_library(perfpulse_core STATIC
     src/report/history_store.cpp
     src/report/html_report_writer.cpp
     src/report/report_json.cpp
+    src/report/report_reanalysis.cpp
 )
 target_include_directories(perfpulse_core PUBLIC
     src

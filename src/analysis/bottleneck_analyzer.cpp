@@ -15,6 +15,10 @@ bool isActive(Bottleneck b) {
     return b != Bottleneck::Background && b != Bottleneck::Loading;
 }
 
+bool isAtCap(float fps, float capFps, const BottleneckThresholds& t) {
+    return capFps > 0.0f && std::fabs(fps - capFps) <= capFps * t.capTolerance;
+}
+
 // Looks for a FPS plateau: a value most active samples sit on while the GPU
 // is not saturated. That is the signature of a frame limiter or V-Sync.
 float detectCapPlateau(const std::vector<SensorSample>& samples, const std::vector<SampleFrameStats>& frames,
@@ -55,6 +59,18 @@ float detectCapPlateau(const std::vector<SensorSample>& samples, const std::vect
     if (bestCount < std::max(5, static_cast<int>(static_cast<float>(considered) * t.capMinShare))) {
         return 0.0f;
     }
+    // Report the median of the plateau, not the centre of the best band:
+    // limiters sit slightly below their nominal value (Reflex: 171 on 180 Hz).
+    const int radius = std::max(1, static_cast<int>(std::lround(bestCap * t.capTolerance)));
+    const auto first = histogram.lower_bound(static_cast<int>(bestCap) - radius);
+    int seen = 0;
+    for (auto it = first; it != histogram.end() && it->first <= static_cast<int>(bestCap) + radius; ++it) {
+        seen += it->second;
+        if (seen * 2 >= bestCount) {
+            bestCap = static_cast<float>(it->first);
+            break;
+        }
+    }
     // Snap to the refresh rate when the plateau sits on it (V-Sync / G-Sync cap).
     if (refreshRateHz > 0 && std::fabs(bestCap - static_cast<float>(refreshRateHz)) <=
                                  static_cast<float>(refreshRateHz) * t.capTolerance) {
@@ -87,8 +103,9 @@ Bottleneck classify(const SensorSample& s, const SampleFrameStats& frame, float 
     const bool coreSaturated = hasValue(s.cpuBusiestCore) && s.cpuBusiestCore >= t.coreSaturated;
     const bool cpuSaturated = hasValue(s.cpuUsage) && s.cpuUsage >= t.cpuTotalSaturated;
 
-    if (capFps > 0.0f && !gpuSaturated && !threadSaturated &&
-        std::fabs(frame.fps - capFps) <= capFps * t.capTolerance) {
+    // At the cap the limiter decides the frame rate, whatever else is busy: a
+    // saturated thread there is often the limiter itself spin-waiting.
+    if (isAtCap(frame.fps, capFps, t)) {
         return Bottleneck::FrameCap;
     }
     if (gpuSaturated) {
@@ -143,6 +160,10 @@ BottleneckSummary analyzeBottlenecks(const std::vector<SensorSample>& samples,
     double cappedGpuUsageSum = 0.0;
     double cappedFpsSum = 0.0;
     size_t cappedWithGpu = 0;
+    double cappedThreadSum = 0.0;
+    size_t cappedWithThread = 0;
+    size_t cappedThreadSaturated = 0;
+    size_t gpuThermalLimited = 0;
     double cpuThreadSum = 0.0;
     size_t cpuThreadCount = 0;
     double cpuGpuSum = 0.0;
@@ -159,10 +180,22 @@ BottleneckSummary analyzeBottlenecks(const std::vector<SensorSample>& samples,
             continue;
         }
         ++activeCount;
-        if (b == Bottleneck::FrameCap && hasValue(s.gpuUsage) && s.gpuUsage > 1.0f) {
-            cappedGpuUsageSum += s.gpuUsage;
-            cappedFpsSum += frameStats[i].fps;
-            ++cappedWithGpu;
+        // Reported whatever the classification: at its temperature target the
+        // GPU lowers clocks even when it is not the component limiting FPS.
+        if (s.gpuLimiters != session::kLimiterUnknown && (s.gpuLimiters & session::kLimiterThermal)) {
+            ++gpuThermalLimited;
+        }
+        if (b == Bottleneck::FrameCap) {
+            if (hasValue(s.gpuUsage) && s.gpuUsage > 1.0f) {
+                cappedGpuUsageSum += s.gpuUsage;
+                cappedFpsSum += frameStats[i].fps;
+                ++cappedWithGpu;
+            }
+            if (hasValue(s.gameBusiestThread)) {
+                cappedThreadSum += s.gameBusiestThread;
+                ++cappedWithThread;
+                cappedThreadSaturated += s.gameBusiestThread >= thresholds.threadSaturated ? 1 : 0;
+            }
         }
         if (b == Bottleneck::Cpu || b == Bottleneck::CpuThermal) {
             if (hasValue(s.gameBusiestThread)) {
@@ -213,11 +246,28 @@ BottleneckSummary analyzeBottlenecks(const std::vector<SensorSample>& samples,
         summary.offenderShare = mixedShare;
     }
 
+    if (cappedWithThread > 0) {
+        summary.cappedBusiestThread = static_cast<float>(cappedThreadSum / static_cast<double>(cappedWithThread));
+        summary.cappedThreadSaturatedShare =
+            static_cast<double>(cappedThreadSaturated) / static_cast<double>(cappedWithThread);
+    }
     if (cappedWithGpu > 0) {
         const double avgGpu = cappedGpuUsageSum / static_cast<double>(cappedWithGpu);
         const double avgFps = cappedFpsSum / static_cast<double>(cappedWithGpu);
-        // Linear extrapolation to ~97% GPU usage. Optimistic by design; flagged as estimate in the report.
-        summary.uncappedEstimateFps = static_cast<float>(avgFps * std::min(97.0 / avgGpu, 4.0));
+        summary.cappedGpuUsage = static_cast<float>(avgGpu);
+        // Linear extrapolation of the headroom of each side: the GPU up to ~97%
+        // usage, the game's busiest thread up to a full core. The smaller wins.
+        // Optimistic by design; flagged as an estimate in the report.
+        const double gpuFactor = 97.0 / avgGpu;
+        double cpuFactor = 4.0;
+        if (hasValue(summary.cappedBusiestThread) && summary.cappedBusiestThread > 1.0f) {
+            cpuFactor = std::max(1.0, 100.0 / summary.cappedBusiestThread);
+        }
+        summary.uncappedLimitedBy = cpuFactor < gpuFactor ? Bottleneck::Cpu : Bottleneck::Gpu;
+        summary.uncappedEstimateFps = static_cast<float>(avgFps * std::min({gpuFactor, cpuFactor, 4.0}));
+    }
+    if (activeCount > 0) {
+        summary.gpuThermalLimitedShare = static_cast<double>(gpuThermalLimited) / static_cast<double>(activeCount);
     }
     if (cpuThreadCount > 0) {
         summary.cpuBoundBusiestThread = static_cast<float>(cpuThreadSum / static_cast<double>(cpuThreadCount));

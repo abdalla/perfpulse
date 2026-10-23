@@ -54,6 +54,38 @@ TEST_CASE("bottleneck: plateau on refresh rate is a frame cap") {
     CHECK(summary.uncappedEstimateFps > 200.0f);
 }
 
+TEST_CASE("bottleneck: at the cap a saturated thread is not a CPU bottleneck") {
+    // Reflex on a 180 Hz display: FPS pinned at ~171 while the main thread is busy.
+    std::vector<session::SensorSample> samples(100, makeSample(73.0f, 93.0f));
+    std::vector<SampleFrameStats> frames(100, {171.0f, 6.5f});
+    for (size_t i = 0; i < 10; ++i) {
+        frames[i].fps = 140.0f + static_cast<float>(i);  // a few genuinely CPU-bound seconds below the cap
+    }
+    const auto summary = analyzeBottlenecks(samples, frames, 180, 100.0f);
+    CHECK(summary.offender == Bottleneck::FrameCap);
+    CHECK_NEAR(summary.detectedCapFps, 171.0, 1e-6);
+    CHECK_NEAR(summary.shareOfActiveTime[static_cast<size_t>(Bottleneck::FrameCap)], 0.9, 1e-9);
+    CHECK_NEAR(summary.shareOfActiveTime[static_cast<size_t>(Bottleneck::Cpu)], 0.1, 1e-9);
+    CHECK_NEAR(summary.cappedThreadSaturatedShare, 1.0, 1e-9);
+    // Thread headroom (100/93) is smaller than GPU headroom (97/73): CPU limits first.
+    CHECK(summary.uncappedLimitedBy == Bottleneck::Cpu);
+    CHECK_NEAR(summary.uncappedEstimateFps, 171.0 * 100.0 / 93.0, 0.5);
+}
+
+TEST_CASE("bottleneck: GPU temperature limit is reported regardless of usage") {
+    auto hot = makeSample(70.0f, 60.0f);
+    hot.gpuLimiters = session::kLimiterThermal;
+    std::vector<session::SensorSample> samples(40, hot);
+    for (size_t i = 0; i < 10; ++i) {
+        samples[i].gpuLimiters = session::kLimiterNone;
+    }
+    std::vector<SampleFrameStats> frames(40);
+    for (size_t i = 0; i < frames.size(); ++i) {
+        frames[i].fps = 90.0f + static_cast<float>(i % 13);
+    }
+    CHECK_NEAR(analyzeBottlenecks(samples, frames, 144, 100.0f).gpuThermalLimitedShare, 0.75, 1e-9);
+}
+
 TEST_CASE("bottleneck: background and loading are excluded from shares") {
     std::vector<session::SensorSample> samples(10, makeSample(98.0f, 50.0f));
     samples[0].gameInForeground = false;

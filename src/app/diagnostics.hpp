@@ -13,4 +13,11 @@ int runDiagnostics(const std::filesystem::path& outputFile);
 // synthetic data and prints its path.
 int runDemoReport(const std::filesystem::path& outputFile);
 
+// "PerfPulse.exe --reanalyze report.html [--to new.html] [--out log.txt]":
+// re-runs the bottleneck analysis of an existing report with the current
+// rules and template, writing it in place unless --to is given, and updates
+// the history entry and index.html next to it.
+int runReanalyze(const std::filesystem::path& report, const std::filesystem::path& destination,
+                 const std::filesystem::path& outputFile);
+
 }  // namespace perfpulse::app

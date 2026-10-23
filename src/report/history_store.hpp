@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <string_view>
 #include <vector>
 
@@ -15,6 +16,9 @@ public:
     explicit HistoryStore(std::filesystem::path reportDirectory);
 
     bool append(const core::Json& entry) const;
+    // Applies `update` to the entry of the given report file and rewrites the log.
+    // Returns false if the entry is not in the log or the log cannot be written.
+    bool updateEntry(std::string_view reportFileName, const std::function<void(core::Json&)>& update) const;
     // Entries whose report file still exists, oldest first.
     std::vector<core::Json> load() const;
 

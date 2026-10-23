@@ -12,8 +12,13 @@
 #include "core/strings.hpp"
 #include "detection/monitor_info.hpp"
 #include "detection/process_info.hpp"
+#include "app/resource_ids.h"
 #include "report/demo_session.hpp"
+#include "report/history_store.hpp"
+#include "report/html_report_writer.hpp"
 #include "report/report_generator.hpp"
+#include "report/report_reanalysis.hpp"
+#include "report/resource_loader.hpp"
 #include "sensors/sensor_hub.hpp"
 #include "sensors/system_info.hpp"
 
@@ -139,6 +144,46 @@ int runDiagnostics(const std::filesystem::path& outputFile) {
     }
     out.line("  events lost: " + std::to_string(capture.eventsLost()));
     capture.stop();
+    return 0;
+}
+
+int runReanalyze(const std::filesystem::path& report, const std::filesystem::path& destination,
+                 const std::filesystem::path& outputFile) {
+    Output out(outputFile);
+    const auto html = core::readTextFile(report);
+    const auto payload = html ? report::extractPayload(*html) : std::nullopt;
+    if (!payload) {
+        out.line("Not a PerfPulse report: " + core::toUtf8(report.wstring()));
+        return 1;
+    }
+    const auto updated = report::reanalyzePayload(*payload);
+    if (!updated) {
+        out.line("The report has no per-second series to reanalyze");
+        return 1;
+    }
+    const auto rendered = report::renderTemplate(report::loadTextResource(IDR_REPORT_TEMPLATE), *updated);
+    const auto target = destination.empty() ? report : destination;
+    if (!rendered || !core::writeTextFileAtomic(target, *rendered)) {
+        out.line("Could not write " + core::toUtf8(target.wstring()));
+        return 1;
+    }
+
+    const auto& bottleneck = *updated->find("bottleneck");
+    const auto language = updated->find("lang") ? updated->find("lang")->asString("pt-BR") : "pt-BR";
+    const report::HistoryStore history(target.parent_path());
+    const bool historyUpdated =
+        history.updateEntry(core::toUtf8(target.filename().wstring()), [&](core::Json& entry) {
+            entry["offender"] = *bottleneck.find("offender");
+            entry["offender_share"] = *bottleneck.find("offender_share");
+        }) &&
+        history.writeIndex(report::loadTextResource(IDR_INDEX_TEMPLATE), language);
+
+    const auto before = payload->find("bottleneck");
+    out.line("Report: " + core::toUtf8(target.wstring()));
+    out.line("Bottleneck: " + (before ? before->find("offender")->asString() : "?") + " -> " +
+             bottleneck.find("offender")->asString() + " (" +
+             std::to_string(static_cast<int>(bottleneck.find("offender_share")->asNumber() * 100.0 + 0.5)) + "%)");
+    out.line(std::string("History: ") + (historyUpdated ? "updated" : "entry not found, left unchanged"));
     return 0;
 }
 

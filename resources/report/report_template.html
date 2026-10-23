@@ -521,6 +521,10 @@ function tipsFor(b) {
   const bn = D.bottleneck, pt = LANG !== "en";
   const ch = D.channels || {};
   const gpuAvg = ch.gpu_usage && ch.gpu_usage.avg;
+  const capGpu = bn.capped_gpu_usage ?? gpuAvg;
+  const capThreadHigh = bn.capped_thread >= 85 || bn.capped_thread_saturated_share >= 0.3;
+  // NVIDIA Reflex / Low Latency Ultra with G-Sync caps at refresh - refresh² / 3600.
+  const reflexCap = info.monitor_hz ? Math.round(info.monitor_hz - info.monitor_hz * info.monitor_hz / 3600) : 0;
   const list = {
     gpu: pt ? [
       "A GPU trabalhou no limite: é o cenário esperado num jogo bem otimizado.",
@@ -576,13 +580,17 @@ function tipsFor(b) {
     ram: pt ? ["A RAM quase acabou e o Windows passou a usar o arquivo de paginação.", "Feche navegadores e launchers; considere mais memória."]
             : ["System RAM almost ran out and Windows started paging.", "Close browsers and launchers; consider more memory."],
     frame_cap: pt ? [
-      `O FPS ficou preso em ~${nf(bn.cap_fps)} FPS (limitador, V-Sync ou Reflex) com sobra de GPU${gpuAvg ? ` (uso médio de ${nf(gpuAvg)}%)` : ""}. Ótimo para suavidade e consumo!`,
-      bn.uncapped_estimate_fps ? `Sem limite, a estimativa é de ~${nf(bn.uncapped_estimate_fps)} FPS (${T("estimate")}, por extrapolação do uso da GPU).` : null,
-      info.monitor_hz ? `Com G-Sync/FreeSync num monitor de ${info.monitor_hz} Hz, um limite em ${info.monitor_hz - 3} FPS é o ponto ideal.` : null,
+      `O FPS ficou preso em ~${nf(bn.cap_fps)} FPS (limitador do jogo, V-Sync ou Reflex)${capGpu != null ? `, com a GPU em ${nf(capGpu)}% de uso médio` : ""}. Nesse tempo quem decide o FPS é o limitador, não o hardware.`,
+      capThreadHigh ? `A thread mais ocupada do jogo ficou em ~${nf(bn.capped_thread)}% de um núcleo mesmo no limite (${pct(bn.capped_thread_saturated_share)} do tempo acima de 85%): a CPU está perto do próprio teto. Parte disso pode ser o limitador esperando em loop.` : null,
+      bn.uncapped_estimate_fps ? `Sem limite, a estimativa é de ~${nf(bn.uncapped_estimate_fps)} FPS (${T("estimate")}), e quem vira o gargalo primeiro é ${bn.uncapped_limited_by === "cpu" ? "a CPU (thread principal)" : "a GPU"}.` : null,
+      info.monitor_hz && Math.abs(bn.cap_fps - reflexCap) <= 3 ? `~${nf(reflexCap)} FPS é o limite automático do NVIDIA Reflex/Low Latency com G-Sync num monitor de ${info.monitor_hz} Hz: o comportamento esperado.` : (info.monitor_hz ? `Com G-Sync/FreeSync num monitor de ${info.monitor_hz} Hz, um limite em ${info.monitor_hz - 3} FPS é o ponto ideal.` : null),
+      "Para ver o teto real do PC, jogue alguns minutos sem limite: se a GPU encostar em ~95% o próximo limite é ela; se o FPS mal subir com a thread em ~100%, é a CPU.",
     ] : [
-      `FPS sat at ~${nf(bn.cap_fps)} FPS (limiter, V-Sync or Reflex) with GPU headroom${gpuAvg ? ` (average usage ${nf(gpuAvg)}%)` : ""}. Great for smoothness and power!`,
-      bn.uncapped_estimate_fps ? `Uncapped, an estimated ~${nf(bn.uncapped_estimate_fps)} FPS (${T("estimate")}, extrapolated from GPU usage).` : null,
-      info.monitor_hz ? `With G-Sync/FreeSync on a ${info.monitor_hz} Hz display, a cap at ${info.monitor_hz - 3} FPS is the sweet spot.` : null,
+      `FPS sat at ~${nf(bn.cap_fps)} FPS (in-game limiter, V-Sync or Reflex)${capGpu != null ? `, with the GPU at ${nf(capGpu)}% average usage` : ""}. During that time the limiter sets the frame rate, not the hardware.`,
+      capThreadHigh ? `The game's busiest thread stayed at ~${nf(bn.capped_thread)}% of one core even at the cap (${pct(bn.capped_thread_saturated_share)} of the time above 85%): the CPU is close to its own ceiling. Part of it may be the limiter spin-waiting.` : null,
+      bn.uncapped_estimate_fps ? `Uncapped, an estimated ~${nf(bn.uncapped_estimate_fps)} FPS (${T("estimate")}), with ${bn.uncapped_limited_by === "cpu" ? "the CPU (main thread)" : "the GPU"} becoming the limit first.` : null,
+      info.monitor_hz && Math.abs(bn.cap_fps - reflexCap) <= 3 ? `~${nf(reflexCap)} FPS is the automatic cap of NVIDIA Reflex/Low Latency with G-Sync on a ${info.monitor_hz} Hz display: expected behaviour.` : (info.monitor_hz ? `With G-Sync/FreeSync on a ${info.monitor_hz} Hz display, a cap at ${info.monitor_hz - 3} FPS is the sweet spot.` : null),
+      "To see the PC's real ceiling, play a few minutes uncapped: if the GPU reaches ~95% it is the next limit; if FPS barely rises with the thread near 100%, it is the CPU.",
     ],
     mixed: pt ? [
       "Nenhum componente ficou saturado: o limite veio do motor do jogo, de streaming de dados, de sincronização ou da rede.",
@@ -598,6 +606,13 @@ function tipsFor(b) {
 function alerts() {
   const ch = D.channels || {}, out = [], pt = LANG !== "en";
   const peak = (k) => ch[k] && ch[k].max;
+  const thermal = D.bottleneck.gpu_thermal_limited_share || 0;
+  if (thermal >= 0.3) {
+    const t = ch.gpu_temperature;
+    out.push([thermal >= 0.6 ? "bad" : "warn", pt
+      ? `A GPU ficou no limite de temperatura em ${pct(thermal)} do tempo${t ? ` (${nf(t.median)} °C de mediana, máx. ${nf(t.max)} °C)` : ""}: o driver reduz o clock para segurar a temperatura. Confira a curva das ventoinhas, a poeira e o fluxo de ar do gabinete; em placas antigas, a pasta e os pads térmicos.`
+      : `The GPU sat at its temperature limit ${pct(thermal)} of the time${t ? ` (median ${nf(t.median)} °C, max ${nf(t.max)} °C)` : ""}: the driver lowers clocks to hold the temperature. Check the fan curve, dust and case airflow; on older cards, the paste and thermal pads.`]);
+  }
   if (peak("gpu_hotspot") >= 100) out.push(["bad", pt ? `Hotspot da GPU chegou a ${nf(peak("gpu_hotspot"))} °C.` : `GPU hotspot reached ${nf(peak("gpu_hotspot"))} °C.`]);
   if (peak("vram_temperature") >= 100) out.push(["bad", pt ? `Temperatura da VRAM (junction) chegou a ${nf(peak("vram_temperature"))} °C: GDDR6X começa a reduzir desempenho perto de 110 °C.` : `VRAM junction temperature reached ${nf(peak("vram_temperature"))} °C: GDDR6X throttles near 110 °C.`]);
   if (peak("cpu_temperature") && hw.cpu_tjmax && peak("cpu_temperature") >= hw.cpu_tjmax - 3) out.push(["bad", pt ? `CPU encostou no limite térmico (${nf(peak("cpu_temperature"))} °C de ${nf(hw.cpu_tjmax)} °C).` : `CPU touched its thermal limit (${nf(peak("cpu_temperature"))} °C of ${nf(hw.cpu_tjmax)} °C).`]);

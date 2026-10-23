@@ -37,8 +37,15 @@ struct BottleneckSummary {
     Bottleneck offender = Bottleneck::Mixed;
     double offenderShare = 0.0;
     float detectedCapFps = 0.0f;   // 0 when no cap plateau was found.
-    // Rough FPS the system could reach without the cap, from GPU headroom.
+    // Rough FPS the system could reach without the cap, from the GPU and CPU
+    // headroom observed while capped, and which side would limit it first.
     float uncappedEstimateFps = 0.0f;
+    Bottleneck uncappedLimitedBy = Bottleneck::Gpu;
+    // Averages while capped: how close each side was to its own limit.
+    float cappedGpuUsage = session::kNoValue;
+    float cappedBusiestThread = session::kNoValue;
+    double cappedThreadSaturatedShare = 0.0;  // capped time with the busiest thread saturated
+    double gpuThermalLimitedShare = 0.0;      // active time with the GPU at its temperature limit
     // Averages while CPU-bound, used to explain the verdict.
     float cpuBoundBusiestThread = session::kNoValue;
     float cpuBoundGpuUsage = session::kNoValue;

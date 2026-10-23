@@ -175,6 +175,11 @@ Json bottleneckJson(const analysis::BottleneckSummary& b) {
     json["shares"] = std::move(shares);
     json["cap_fps"] = number(b.detectedCapFps, 0);
     json["uncapped_estimate_fps"] = number(b.uncappedEstimateFps, 0);
+    json["uncapped_limited_by"] = analysis::bottleneckKey(b.uncappedLimitedBy);
+    json["capped_gpu_usage"] = number(b.cappedGpuUsage, 1);
+    json["capped_thread"] = number(b.cappedBusiestThread, 1);
+    json["capped_thread_saturated_share"] = number(b.cappedThreadSaturatedShare, 4);
+    json["gpu_thermal_limited_share"] = number(b.gpuThermalLimitedShare, 4);
     json["cpu_bound_thread"] = number(b.cpuBoundBusiestThread, 1);
     json["cpu_bound_gpu"] = number(b.cpuBoundGpuUsage, 1);
     json["gpu_power_limited_share"] = number(b.gpuPowerLimitedShare, 4);
@@ -222,6 +227,10 @@ Json seriesJson(const session::SessionData& data, const analysis::SessionAnalysi
 }
 
 }  // namespace
+
+Json buildBottleneckJson(const analysis::BottleneckSummary& summary) {
+    return bottleneckJson(summary);
+}
 
 Json buildReportPayload(const session::SessionData& data, const analysis::SessionAnalysis& analysis,
                         std::string_view languageTag) {

@@ -1,6 +1,7 @@
 #include "analysis/session_analysis.hpp"
 #include "report/html_report_writer.hpp"
 #include "report/report_json.hpp"
+#include "report/report_reanalysis.hpp"
 #include "test_framework.hpp"
 
 using namespace perfpulse;
@@ -38,6 +39,30 @@ TEST_CASE("report: payload carries the headline numbers") {
     CHECK(payload.find("bottleneck")->find("offender")->asString() == "gpu");
     CHECK(payload.find("series")->find("cpu_power")->isNull());
     CHECK(payload.find("series")->find("gpu_usage")->size() == 60);
+}
+
+TEST_CASE("report: reanalysis rebuilds the bottleneck from the embedded series") {
+    // 100 FPS pinned (a cap) with a saturated thread and an idle-ish GPU.
+    auto data = sampleSession();
+    for (auto& s : data.samples) {
+        s.gpuUsage = 70.0f;
+        s.gameBusiestThread = 92.0f;
+    }
+    const auto analysis = analysis::analyzeSession(data);
+    auto payload = report::buildReportPayload(data, analysis, "pt-BR");
+    payload["bottleneck"]["offender"] = "cpu";  // what an older version would have said
+
+    const auto html = report::renderTemplate("<html><script id=\"perfpulse-data\" type=\"application/json\">"
+                                             "__PERFPULSE_DATA__</script></html>",
+                                             payload);
+    const auto extracted = report::extractPayload(*html);
+    CHECK(extracted.has_value());
+    const auto updated = report::reanalyzePayload(*extracted);
+    CHECK(updated.has_value());
+    CHECK(updated->find("bottleneck")->find("offender")->asString() == "frame_cap");
+    CHECK(updated->find("series")->find("bottleneck")->size() == data.samples.size());
+    CHECK_NEAR(updated->find("frames")->find("avg_fps")->asNumber(), 100.0, 0.1);  // frame stats untouched
+    CHECK(!report::extractPayload("<html>no data</html>").has_value());
 }
 
 TEST_CASE("report: template rendering and file naming") {

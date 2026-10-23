@@ -70,6 +70,7 @@ histórico, pasta, relatório de demonstração, sair).
 | `--diag [--out arquivo.txt]` | Diagnóstico: fontes de sensores, 3 amostras e taxa de *presents* por processo por 10 s. |
 | `--demo-report [--out arquivo.txt]` | Gera um relatório a partir de uma sessão sintética de 18 min. |
 | `--exit` | Pede à instância em execução que salve o relatório da partida atual e feche. |
+| `--reanalyze relatório.html [--to novo.html]` | Refaz a análise de gargalo de um relatório antigo com as regras e o template atuais (no próprio arquivo, a menos que `--to` seja dado) e atualiza o histórico ao lado dele. As estatísticas de frame continuam as originais, porque os frames brutos não ficam salvos. |
 
 ## O relatório
 

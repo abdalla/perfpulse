@@ -21,6 +21,45 @@ bool HistoryStore::append(const core::Json& entry) const {
     return static_cast<bool>(stream);
 }
 
+bool HistoryStore::updateEntry(std::string_view reportFileName,
+                               const std::function<void(core::Json&)>& update) const {
+    std::ifstream input(historyPath(), std::ios::binary);
+    if (!input) {
+        return false;
+    }
+    std::string rewritten;
+    std::string line;
+    bool found = false;
+    while (std::getline(input, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        auto entry = core::Json::parse(line);
+        if (entry && entry->find("file") && entry->find("file")->asString() == reportFileName) {
+            update(*entry);
+            line = entry->dump();
+            found = true;
+        }
+        rewritten += line + '\n';
+    }
+    input.close();
+    if (!found) {
+        return false;
+    }
+    auto temporary = historyPath();
+    temporary += L".tmp";
+    {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        output << rewritten;
+        if (!output) {
+            return false;
+        }
+    }
+    std::error_code error;
+    std::filesystem::rename(temporary, historyPath(), error);
+    return !error;
+}
+
 std::vector<core::Json> HistoryStore::load() const {
     std::vector<core::Json> entries;
     std::ifstream stream(historyPath(), std::ios::binary);
